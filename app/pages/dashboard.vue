@@ -18,6 +18,11 @@ const selectedId = ref<string | null>(null)
 const activeCategory = ref<string>('all')
 const searchQuery = ref('')
 
+// --- режим масового вибору на видалення ---
+const selectMode = ref(false)
+const selectedForDelete = ref<Set<string>>(new Set())
+const deletingBulk = ref(false)
+
 // --- стан картки ---
 const form = reactive({
   doc_id: `DOC-${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}`,
@@ -281,6 +286,58 @@ async function deleteDoc() {
   catch (e: unknown) {
     toast.add({ title: 'Помилка видалення', description: String(e), color: 'error' })
   }
+}
+
+// --- масовий вибір на видалення ---
+function toggleSelectMode() {
+  selectMode.value = !selectMode.value
+  selectedForDelete.value = new Set()
+}
+
+function toggleForDelete(docId: string) {
+  const next = new Set(selectedForDelete.value)
+  if (next.has(docId)) next.delete(docId)
+  else next.add(docId)
+  selectedForDelete.value = next
+}
+
+function toggleSelectAll() {
+  if (selectedForDelete.value.size === filteredDocs.value.length) {
+    selectedForDelete.value = new Set()
+  }
+  else {
+    selectedForDelete.value = new Set(filteredDocs.value.map(d => d.doc_id))
+  }
+}
+
+async function deleteSelected() {
+  const ids = [...selectedForDelete.value]
+  if (ids.length === 0) return
+  // eslint-disable-next-line no-alert
+  if (!confirm(`Видалити ${ids.length} документ(ів) разом із підписами та аудитом?`)) return
+  deletingBulk.value = true
+  const results = await Promise.allSettled(
+    ids.map(id => apiFetch(`/documents/${id}`, { method: 'DELETE' }))
+  )
+  deletingBulk.value = false
+  const ok = results.filter(r => r.status === 'fulfilled').length
+  const failed = results.length - ok
+  if (failed === 0) {
+    toast.add({ title: `Видалено ${ok} документ(ів)`, color: 'success' })
+  }
+  else {
+    toast.add({
+      title: `Видалено ${ok}, помилок ${failed}`,
+      color: failed === results.length ? 'error' : 'warning'
+    })
+  }
+  // якщо відкритий документ потрапив у видалені — закриваємо картку
+  if (selectedId.value && selectedForDelete.value.has(selectedId.value)) {
+    selectedId.value = null
+  }
+  selectMode.value = false
+  selectedForDelete.value = new Set()
+  await reloadDocs()
 }
 
 // --- подати у чергу ---
@@ -550,25 +607,65 @@ onMounted(async () => {
     <div class="w-72 flex-shrink-0 border-r border-default flex flex-col">
       <div class="p-3 border-b border-default flex items-center justify-between">
         <span class="font-medium text-sm">{{ filteredDocs.length }} документів</span>
-        <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" @click="reloadDocs" />
+        <div class="flex items-center gap-1">
+          <UButton
+            :icon="selectMode ? 'i-lucide-x' : 'i-lucide-list-checks'"
+            :variant="selectMode ? 'soft' : 'ghost'"
+            :color="selectMode ? 'primary' : 'neutral'"
+            size="xs"
+            :title="selectMode ? 'Вийти з режиму вибору' : 'Вибрати для видалення'"
+            @click="toggleSelectMode"
+          />
+          <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" @click="reloadDocs" />
+        </div>
       </div>
+
+      <!-- панель масового вибору -->
+      <div v-if="selectMode" class="p-2 border-b border-default flex items-center gap-2 bg-elevated/50">
+        <UCheckbox
+          :model-value="selectedForDelete.size === filteredDocs.length && filteredDocs.length > 0"
+          :indeterminate="selectedForDelete.size > 0 && selectedForDelete.size < filteredDocs.length"
+          @update:model-value="toggleSelectAll"
+        />
+        <span class="text-xs text-muted flex-1">обрано: {{ selectedForDelete.size }}</span>
+        <UButton
+          icon="i-lucide-trash-2"
+          color="error"
+          variant="soft"
+          size="xs"
+          :loading="deletingBulk"
+          :disabled="selectedForDelete.size === 0"
+          @click="deleteSelected"
+        >
+          Видалити
+        </UButton>
+      </div>
+
       <div class="flex-1 overflow-y-auto">
         <div
           v-for="doc in filteredDocs"
           :key="doc.doc_id"
-          class="p-3 border-b border-default cursor-pointer hover:bg-elevated transition-colors"
-          :class="{ 'bg-elevated': selectedId === doc.doc_id }"
-          @click="selectDoc(doc)"
+          class="p-3 border-b border-default cursor-pointer hover:bg-elevated transition-colors flex items-center gap-2"
+          :class="{ 'bg-elevated': selectMode ? selectedForDelete.has(doc.doc_id) : selectedId === doc.doc_id }"
+          @click="selectMode ? toggleForDelete(doc.doc_id) : selectDoc(doc)"
         >
-          <div class="text-sm font-medium truncate">{{ doc.title || '(без заголовка)' }}</div>
-          <div class="text-xs text-muted mt-0.5 flex items-center gap-2">
-            <span>{{ doc.doc_id }}</span>
-            <UBadge
-              :label="doc.status"
-              size="xs"
-              :color="doc.status === 'signed' ? 'success' : doc.status === 'pending' ? 'warning' : 'neutral'"
-              variant="subtle"
-            />
+          <UCheckbox
+            v-if="selectMode"
+            :model-value="selectedForDelete.has(doc.doc_id)"
+            @update:model-value="toggleForDelete(doc.doc_id)"
+            @click.stop
+          />
+          <div class="min-w-0 flex-1">
+            <div class="text-sm font-medium truncate">{{ doc.title || '(без заголовка)' }}</div>
+            <div class="text-xs text-muted mt-0.5 flex items-center gap-2">
+              <span>{{ doc.doc_id }}</span>
+              <UBadge
+                :label="doc.status"
+                size="xs"
+                :color="doc.status === 'signed' ? 'success' : doc.status === 'pending' ? 'warning' : 'neutral'"
+                variant="subtle"
+              />
+            </div>
           </div>
         </div>
         <div v-if="filteredDocs.length === 0" class="p-6 text-center text-muted text-sm">
