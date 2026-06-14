@@ -141,8 +141,19 @@ async function selectDoc(doc: DocEntry) {
       position: s.position,
       status: s.status === 'signed' ? 'signed' : s.status === 'rejected' ? 'rejected' : 'pending'
     }))
-    if (full.conformance) {
-      const c = full.conformance as {
+
+    // для підписаних документів беремо СВІЖИЙ звіт через /validate
+    // (інжектить реальні КЕП-відмітки з doc.signers — ст.7 851-IV),
+    // бо збережений conformance міг бути порахований до підпису
+    let conf = full.conformance
+    if (full.status === 'signed' || full.status === 'pending_signatures') {
+      try {
+        conf = await apiFetch(`/documents/${full.doc_id}/validate`, { method: 'POST' })
+      }
+      catch { /* fallback на збережений conformance */ }
+    }
+    if (conf) {
+      const c = conf as {
         conforms?: boolean; compliant?: boolean
         findings_count?: number; rules_passed?: number
         results?: Array<{ rule_id: string; conforms: boolean; findings: Array<{ message: string }> }>
@@ -422,8 +433,10 @@ onMounted(async () => {
   })
 
   // завантажуємо euscpfactory.js (WASM crypto) з порталу через Nitro proxy
+  // new Function обходить статичний аналіз Vite — файл не існує локально
   try {
-    const mod = await import(/* @vite-ignore */ `/api/eusign/modules/euscpfactory.js`)
+    const dynamicImport = new Function('path', 'return import(path)')
+    const mod = await dynamicImport('/api/eusign/modules/euscpfactory.js')
     euSignFactory = mod.euSignFactory
     euSignFactory.onerror = (m: string) => toast.add({ title: 'EUSign: ' + m, color: 'error' })
     euSignFactory.onChangeCAs = () => {
