@@ -9,7 +9,7 @@ useSeoMeta({
   description: 'Система електронного документообігу ДСТУ 4163'
 })
 
-const { apiFetch, logout, user } = useAuth()
+const { apiFetch, logout, user, token } = useAuth()
 const toast = useToast()
 
 // --- стан списку ---
@@ -18,6 +18,57 @@ const selectedId = ref<string | null>(null)
 const activeCategory = ref<string>('all')
 const searchQuery = ref('')
 
+// --- оцифрування: заливка скану ---
+const scanModalOpen = ref(false)
+const scanFile = ref<File | null>(null)
+const scanTitle = ref('')
+const scanSigners = ref('')
+const scanUploading = ref(false)
+
+function openScanModal() {
+  scanFile.value = null
+  scanTitle.value = ''
+  scanSigners.value = ''
+  scanModalOpen.value = true
+}
+
+async function uploadScan() {
+  if (!scanFile.value) {
+    toast.add({ title: 'Оберіть файл скану', color: 'warning' })
+    return
+  }
+  scanUploading.value = true
+  try {
+    const apiBase = useRuntimeConfig().public.apiBase
+    const docId = `SCAN-${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}`
+    const fd = new FormData()
+    fd.append('file', scanFile.value)
+    fd.append('doc_id', docId)
+    fd.append('title', scanTitle.value || scanFile.value.name)
+    fd.append('signers', scanSigners.value)
+    const res = await fetch(`${apiBase}/documents/scan`, {
+      method: 'POST',
+      headers: token.value ? { Authorization: `Bearer ${token.value}` } : {},
+      body: fd
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }))
+      throw new Error(err.detail || `HTTP ${res.status}`)
+    }
+    const doc = await res.json()
+    toast.add({ title: 'Скан оцифровано', description: `${doc.doc_id} — готовий до підпису`, color: 'success' })
+    scanModalOpen.value = false
+    await reloadDocs()
+    await selectDoc({ doc_id: doc.doc_id } as DocEntry)
+  }
+  catch (e: unknown) {
+    toast.add({ title: 'Помилка заливки скану', description: String(e), color: 'error' })
+  }
+  finally {
+    scanUploading.value = false
+  }
+}
+
 // --- вьювер документів (PDF + DOCX) ---
 const viewerOpen = ref(false)
 const viewerUrl = ref<string>('')        // object URL для PDF iframe
@@ -25,7 +76,6 @@ const viewerHtml = ref<string>('')       // конвертований HTML дл
 const viewerMode = ref<'pdf' | 'docx'>('pdf')
 const viewerLoading = ref(false)
 const viewerTitle = ref('')
-const { token } = useAuth()
 
 async function openViewer() {
   viewerLoading.value = true
@@ -685,9 +735,12 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="p-3">
+      <div class="p-3 space-y-2">
         <UButton block icon="i-lucide-plus" @click="newDocument">
           Додати документ
+        </UButton>
+        <UButton block variant="soft" icon="i-lucide-scan-line" @click="openScanModal">
+          Залити скан
         </UButton>
       </div>
 
@@ -1186,6 +1239,59 @@ onMounted(async () => {
               class="docx-preview mx-auto my-6 max-w-3xl bg-white text-black p-12 shadow-lg rounded"
               v-html="viewerHtml"
             />
+          </div>
+        </div>
+      </template>
+    </UModal>
+
+    <!-- ЗАЛИВКА СКАНУ (оцифрування паперового документа) -->
+    <UModal v-model:open="scanModalOpen" :ui="{ content: 'max-w-lg w-full' }">
+      <template #content>
+        <div class="p-5 space-y-4">
+          <div class="flex items-center gap-2 font-semibold">
+            <UIcon name="i-lucide-scan-line" class="text-primary" />
+            Оцифрування паперового документа
+          </div>
+          <p class="text-sm text-muted">
+            Завантажте скан (PDF або фото). Скан стане електронним оригіналом
+            і його можна буде підписати КЕП — електронна копія набуде юридичної
+            сили (Закон 851-IV).
+          </p>
+
+          <UFormField label="Файл скану (PDF / JPEG / PNG / TIFF)">
+            <input
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.tif,.tiff,.bmp,.webp,application/pdf,image/*"
+              class="text-sm w-full"
+              @change="(e) => scanFile = (e.target as HTMLInputElement).files?.[0] ?? null"
+            >
+          </UFormField>
+
+          <UFormField label="Назва документа">
+            <UInput v-model="scanTitle" placeholder="напр. Наказ №7 (паперовий оригінал)" class="w-full" />
+          </UFormField>
+
+          <UFormField label="Підписанти (ПІБ | посада, по рядку)">
+            <UTextarea
+              v-model="scanSigners"
+              :rows="2"
+              placeholder="ПЕТРЕНКО Олександр | Директор"
+              class="w-full"
+            />
+          </UFormField>
+
+          <div class="flex gap-2 justify-end">
+            <UButton variant="ghost" color="neutral" @click="scanModalOpen = false">
+              Скасувати
+            </UButton>
+            <UButton
+              icon="i-lucide-upload"
+              :loading="scanUploading"
+              :disabled="!scanFile"
+              @click="uploadScan"
+            >
+              Оцифрувати
+            </UButton>
           </div>
         </div>
       </template>
