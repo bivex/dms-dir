@@ -23,6 +23,35 @@ const selectMode = ref(false)
 const selectedForDelete = ref<Set<string>>(new Set())
 const deletingBulk = ref(false)
 
+// --- обрані (favorites): персональна позначка у localStorage ---
+const favorites = ref<Set<string>>(new Set())
+
+function loadFavorites() {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = localStorage.getItem('dilovod_favorites')
+    favorites.value = new Set(raw ? JSON.parse(raw) : [])
+  }
+  catch { favorites.value = new Set() }
+}
+
+function persistFavorites() {
+  if (typeof window === 'undefined') return
+  localStorage.setItem('dilovod_favorites', JSON.stringify([...favorites.value]))
+}
+
+function toggleFavorite(docId: string) {
+  const next = new Set(favorites.value)
+  if (next.has(docId)) next.delete(docId)
+  else next.add(docId)
+  favorites.value = next
+  persistFavorites()
+}
+
+function isFavorite(docId: string): boolean {
+  return favorites.value.has(docId)
+}
+
 // --- стан картки ---
 const form = reactive({
   doc_id: `DOC-${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}`,
@@ -101,7 +130,7 @@ const filteredDocs = computed(() => {
       d.title.toLowerCase().includes(q) || d.doc_id.toLowerCase().includes(q)
     )
   }
-  if (activeCategory.value === 'favorites') return list // TODO: favorites
+  if (activeCategory.value === 'favorites') return list.filter(d => favorites.value.has(d.doc_id))
   if (activeCategory.value === 'archive') return list.filter(d => d.status === 'archived')
   if (activeCategory.value === 'trash') return list.filter(d => d.status === 'deleted')
   return list
@@ -280,6 +309,13 @@ async function deleteDoc() {
   try {
     await apiFetch(`/documents/${selectedId.value}`, { method: 'DELETE' })
     toast.add({ title: 'Видалено' })
+    // прибрати з обраних, якщо було
+    if (favorites.value.has(selectedId.value)) {
+      const next = new Set(favorites.value)
+      next.delete(selectedId.value)
+      favorites.value = next
+      persistFavorites()
+    }
     selectedId.value = null
     await reloadDocs()
   }
@@ -334,6 +370,13 @@ async function deleteSelected() {
   // якщо відкритий документ потрапив у видалені — закриваємо картку
   if (selectedId.value && selectedForDelete.value.has(selectedId.value)) {
     selectedId.value = null
+  }
+  // прибрати видалені з обраних
+  if ([...selectedForDelete.value].some(id => favorites.value.has(id))) {
+    const next = new Set(favorites.value)
+    for (const id of selectedForDelete.value) next.delete(id)
+    favorites.value = next
+    persistFavorites()
   }
   selectMode.value = false
   selectedForDelete.value = new Set()
@@ -504,6 +547,7 @@ function buildPayload() {
 
 // ініціалізація
 onMounted(async () => {
+  loadFavorites()
   await reloadDocs()
   // завантажуємо eusign.js (EndUser widget helper) динамічно
   await new Promise<void>((resolve) => {
@@ -590,6 +634,7 @@ onMounted(async () => {
         >
           {{ cat.label }}
           <UBadge v-if="cat.id === 'all'" :label="String(docs.length)" variant="subtle" size="xs" class="ml-auto" />
+          <UBadge v-else-if="cat.id === 'favorites' && favorites.size" :label="String(favorites.size)" color="warning" variant="subtle" size="xs" class="ml-auto" />
         </UButton>
       </nav>
 
@@ -667,6 +712,16 @@ onMounted(async () => {
               />
             </div>
           </div>
+          <UButton
+            v-if="!selectMode"
+            icon="i-lucide-star"
+            :color="isFavorite(doc.doc_id) ? 'warning' : 'neutral'"
+            :variant="isFavorite(doc.doc_id) ? 'soft' : 'ghost'"
+            size="xs"
+            :class="isFavorite(doc.doc_id) ? '' : 'opacity-40 hover:opacity-100'"
+            :title="isFavorite(doc.doc_id) ? 'Прибрати з обраних' : 'Додати в обрані'"
+            @click.stop="toggleFavorite(doc.doc_id)"
+          />
         </div>
         <div v-if="filteredDocs.length === 0" class="p-6 text-center text-muted text-sm">
           Немає документів
@@ -690,6 +745,18 @@ onMounted(async () => {
             <div class="flex items-center gap-2 font-semibold">
               <UIcon name="i-lucide-edit" />
               1. Картка документа
+              <UButton
+                v-if="selectedId"
+                icon="i-lucide-star"
+                :color="isFavorite(form.doc_id) ? 'warning' : 'neutral'"
+                :variant="isFavorite(form.doc_id) ? 'soft' : 'ghost'"
+                size="xs"
+                class="ml-auto"
+                :title="isFavorite(form.doc_id) ? 'Прибрати з обраних' : 'Додати в обрані'"
+                @click="toggleFavorite(form.doc_id)"
+              >
+                {{ isFavorite(form.doc_id) ? 'В обраних' : 'В обрані' }}
+              </UButton>
             </div>
           </template>
 
