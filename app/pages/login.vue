@@ -7,52 +7,54 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Login',
-  description: 'Login to your account to continue'
+  title: 'Вхід — Діловод',
+  description: 'Увійдіть до системи електронного документообігу'
 })
 
+const { login, isLoggedIn } = useAuth()
 const toast = useToast()
+const router = useRouter()
+
+// Якщо вже авторизований — одразу на дашборд
+if (isLoggedIn.value) {
+  await navigateTo('/dashboard')
+}
+
+const loading = ref(false)
+
+const schema = z.object({
+  email: z.string().email('Невірний формат email'),
+  password: z.string().min(1, 'Введіть пароль')
+})
+
+type Schema = z.output<typeof schema>
 
 const fields = [{
   name: 'email',
   type: 'text' as const,
   label: 'Email',
-  placeholder: 'Enter your email',
+  placeholder: 'user@example.com',
   required: true
 }, {
   name: 'password',
-  label: 'Password',
+  label: 'Пароль',
   type: 'password' as const,
-  placeholder: 'Enter your password'
-}, {
-  name: 'remember',
-  label: 'Remember me',
-  type: 'checkbox' as const
+  placeholder: '••••••••'
 }]
 
-const providers = [{
-  label: 'Google',
-  icon: 'i-simple-icons-google',
-  onClick: () => {
-    toast.add({ title: 'Google', description: 'Login with Google' })
+async function onSubmit(payload: FormSubmitEvent<Schema>) {
+  loading.value = true
+  try {
+    await login(payload.data.email, payload.data.password)
+    await router.push('/dashboard')
   }
-}, {
-  label: 'GitHub',
-  icon: 'i-simple-icons-github',
-  onClick: () => {
-    toast.add({ title: 'GitHub', description: 'Login with GitHub' })
+  catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Помилка авторизації'
+    toast.add({ title: 'Помилка входу', description: msg, color: 'error' })
   }
-}]
-
-const schema = z.object({
-  email: z.email('Invalid email'),
-  password: z.string().min(8, 'Must be at least 8 characters')
-})
-
-type Schema = z.output<typeof schema>
-
-function onSubmit(payload: FormSubmitEvent<Schema>) {
-  console.log('Submitted', payload)
+  finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -60,31 +62,18 @@ function onSubmit(payload: FormSubmitEvent<Schema>) {
   <UAuthForm
     :fields="fields"
     :schema="schema"
-    :providers="providers"
-    title="Welcome back"
-    icon="i-lucide-lock"
+    title="Діловод · СЕД"
+    description="ДСТУ 4163 + КЕП"
+    icon="i-lucide-shield"
+    :loading="loading"
     @submit="onSubmit"
   >
     <template #description>
-      Don't have an account? <ULink
-        to="/signup"
-        class="text-primary font-medium"
-      >Sign up</ULink>.
-    </template>
-
-    <template #password-hint>
-      <ULink
-        to="/"
-        class="text-primary font-medium"
-        tabindex="-1"
-      >Forgot password?</ULink>
+      Система електронного документообігу
     </template>
 
     <template #footer>
-      By signing in, you agree to our <ULink
-        to="/"
-        class="text-primary font-medium"
-      >Terms of Service</ULink>.
+      Приватний ключ не покидає браузер (Закон 2155-VIII).
     </template>
   </UAuthForm>
 </template>

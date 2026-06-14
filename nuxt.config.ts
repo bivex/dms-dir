@@ -1,5 +1,12 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  runtimeConfig: {
+    public: {
+      // Portal API URL — override via NUXT_PUBLIC_API_BASE env var
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000'
+    }
+  },
+
   modules: [
     '@nuxt/eslint',
     '@nuxt/image',
@@ -22,7 +29,10 @@ export default defineNuxtConfig({
   },
 
   routeRules: {
-    '/docs': { redirect: '/docs/getting-started', prerender: false }
+    '/docs': { redirect: '/docs/getting-started', prerender: false },
+    '/dashboard': { prerender: false, ssr: false },
+    '/login': { prerender: false, ssr: false },
+    '/signup': { prerender: false, ssr: false }
   },
 
   compatibilityDate: '2024-07-11',
