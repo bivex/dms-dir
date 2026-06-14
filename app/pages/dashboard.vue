@@ -380,12 +380,19 @@ async function signCurrent() {
   }
 }
 
-function initWidget() {
+async function initWidget() {
   if (widgetInited) return
+  // чекаємо поки v-if відрендерить #sign-widget-parent у DOM
+  await nextTick()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const EU = (window as any).EndUser
   if (typeof EU === 'undefined') {
     euStatus.value = 'eusign.js не завантажено — перезавантажте сторінку'
+    return
+  }
+  const parent = document.getElementById('sign-widget-parent')
+  if (!parent) {
+    euStatus.value = 'Контейнер віджета не знайдено'
     return
   }
   try {
@@ -766,7 +773,7 @@ onMounted(async () => {
 
             <div v-if="keySource === 'token'" class="text-sm text-muted p-3 rounded border border-default space-y-2">
               <div>Підпис апаратним токеном через офіційний віджет ІІТ.</div>
-              <div id="sign-widget-parent" class="mt-2 min-h-[200px]" />
+              <div id="sign-widget-parent" class="mt-2 w-full h-[620px] border border-default rounded overflow-hidden" />
             </div>
 
             <template v-else>
