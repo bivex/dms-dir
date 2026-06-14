@@ -18,21 +18,23 @@ const selectedId = ref<string | null>(null)
 const activeCategory = ref<string>('all')
 const searchQuery = ref('')
 
-// --- PDF-вьювер ---
+// --- вьювер документів (PDF + DOCX) ---
 const viewerOpen = ref(false)
-const viewerUrl = ref<string>('')
+const viewerUrl = ref<string>('')        // object URL для PDF iframe
+const viewerHtml = ref<string>('')       // конвертований HTML для DOCX
+const viewerMode = ref<'pdf' | 'docx'>('pdf')
 const viewerLoading = ref(false)
 const viewerTitle = ref('')
 const { token } = useAuth()
 
 async function openViewer() {
-  if (form.fmt !== 'pdf') {
-    toast.add({ title: 'Перегляд доступний лише для PDF', color: 'warning' })
-    return
-  }
   viewerLoading.value = true
   viewerOpen.value = true
   viewerTitle.value = form.title || form.doc_id
+  viewerMode.value = form.fmt === 'docx' ? 'docx' : 'pdf'
+  // прибрати попередній стан
+  if (viewerUrl.value) { URL.revokeObjectURL(viewerUrl.value); viewerUrl.value = '' }
+  viewerHtml.value = ''
   try {
     const apiBase = useRuntimeConfig().public.apiBase
     const res = await fetch(`${apiBase}/documents/${form.doc_id}/download`, {
@@ -40,9 +42,16 @@ async function openViewer() {
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const blob = await res.blob()
-    // звільняємо попередній object URL щоб не текла памʼять
-    if (viewerUrl.value) URL.revokeObjectURL(viewerUrl.value)
-    viewerUrl.value = URL.createObjectURL(blob)
+    if (viewerMode.value === 'docx') {
+      // DOCX рендеримо у HTML через mammoth (браузер не показує docx нативно)
+      const mammoth = await import('mammoth')
+      const buf = await blob.arrayBuffer()
+      const result = await mammoth.convertToHtml({ arrayBuffer: buf })
+      viewerHtml.value = result.value || '<p class="text-muted">Порожній документ</p>'
+    }
+    else {
+      viewerUrl.value = URL.createObjectURL(blob)
+    }
   }
   catch (e: unknown) {
     viewerOpen.value = false
@@ -63,6 +72,7 @@ function closeViewer() {
     URL.revokeObjectURL(viewerUrl.value)
     viewerUrl.value = ''
   }
+  viewerHtml.value = ''
 }
 
 // --- режим масового вибору на видалення ---
@@ -1129,7 +1139,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- PDF-ВЬЮВЕР -->
+    <!-- ВЬЮВЕР ДОКУМЕНТІВ (PDF + DOCX) -->
     <UModal v-model:open="viewerOpen" :ui="{ content: 'max-w-5xl w-full' }">
       <template #content>
         <div class="flex flex-col h-[85vh]">
@@ -1137,6 +1147,7 @@ onMounted(async () => {
             <div class="flex items-center gap-2 font-medium text-sm min-w-0">
               <UIcon name="i-lucide-file-text" class="text-primary flex-shrink-0" />
               <span class="truncate">{{ viewerTitle }}</span>
+              <UBadge :label="viewerMode.toUpperCase()" size="xs" variant="subtle" class="flex-shrink-0" />
             </div>
             <div class="flex items-center gap-1 flex-shrink-0">
               <UButton
@@ -1147,6 +1158,7 @@ onMounted(async () => {
                 @click="downloadDoc"
               />
               <UButton
+                v-if="viewerMode === 'pdf'"
                 icon="i-lucide-external-link"
                 variant="ghost"
                 size="xs"
@@ -1157,15 +1169,22 @@ onMounted(async () => {
               <UButton icon="i-lucide-x" variant="ghost" size="xs" @click="closeViewer" />
             </div>
           </div>
-          <div class="flex-1 relative bg-elevated">
+          <div class="flex-1 relative bg-elevated overflow-auto">
             <div v-if="viewerLoading" class="absolute inset-0 flex items-center justify-center">
               <UIcon name="i-lucide-loader-circle" class="animate-spin text-2xl text-muted" />
             </div>
+            <!-- PDF: нативний iframe -->
             <iframe
-              v-if="viewerUrl"
+              v-if="viewerMode === 'pdf' && viewerUrl"
               :src="viewerUrl"
               class="w-full h-full border-0"
               title="PDF перегляд"
+            />
+            <!-- DOCX: конвертований HTML (mammoth) -->
+            <div
+              v-else-if="viewerMode === 'docx' && viewerHtml"
+              class="docx-preview mx-auto my-6 max-w-3xl bg-white text-black p-12 shadow-lg rounded"
+              v-html="viewerHtml"
             />
           </div>
         </div>
@@ -1173,3 +1192,14 @@ onMounted(async () => {
     </UModal>
   </div>
 </template>
+
+<style scoped>
+/* стилі для DOCX-прев'ю (mammoth HTML): тип. документ на «папері» */
+.docx-preview :deep(h1) { font-size: 1.5rem; font-weight: 700; margin: 0.8em 0 0.4em; }
+.docx-preview :deep(h2) { font-size: 1.25rem; font-weight: 600; margin: 0.7em 0 0.35em; }
+.docx-preview :deep(p) { margin: 0.5em 0; line-height: 1.6; text-align: justify; }
+.docx-preview :deep(table) { border-collapse: collapse; width: 100%; margin: 0.8em 0; }
+.docx-preview :deep(td), .docx-preview :deep(th) { border: 1px solid #ccc; padding: 6px 10px; }
+.docx-preview :deep(strong) { font-weight: 700; }
+.docx-preview :deep(ul), .docx-preview :deep(ol) { margin: 0.5em 0; padding-left: 1.5em; }
+</style>
