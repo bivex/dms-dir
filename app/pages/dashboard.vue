@@ -117,6 +117,16 @@ async function selectDoc(doc: DocEntry) {
     form.doc_type = full.doc_type
     form.fmt = full.fmt ?? 'pdf'
     form.signers = full.signers.map(s => `${s.full_name} | ${s.position}`).join('\n')
+    // відновлюємо body і решту полів з content_json
+    const cj = (full as Record<string, unknown>).content_json as Record<string, unknown> | undefined
+    if (cj) {
+      form.org_name = String(cj.org_name ?? form.org_name)
+      form.subject_type = String(cj.subject_type ?? form.subject_type)
+      form.date_text = String(cj.date_text ?? '')
+      form.reg_index = String(cj.reg_index ?? '')
+      const b = cj.body
+      form.body = Array.isArray(b) ? b.join('\n') : String(b ?? '')
+    }
     docStatus.value = full.status
     signerList.value = full.signers.map(s => ({
       name: s.full_name,
@@ -124,7 +134,20 @@ async function selectDoc(doc: DocEntry) {
       status: s.status === 'signed' ? 'signed' : s.status === 'rejected' ? 'rejected' : 'pending'
     }))
     if (full.conformance) {
-      report.value = full.conformance
+      const c = full.conformance as {
+        conforms?: boolean; compliant?: boolean
+        findings_count?: number; rules_passed?: number
+        results?: Array<{ rule_id: string; conforms: boolean; findings: Array<{ message: string }> }>
+        findings?: Array<{ rule: string; message: string }>
+      }
+      // підтримуємо обидва формати
+      report.value = {
+        compliant: c.compliant ?? c.conforms ?? false,
+        rules_passed: c.rules_passed ?? (c.results?.filter(x => x.conforms).length ?? 0),
+        findings: c.findings ?? (c.results
+          ?.filter(x => !x.conforms)
+          .flatMap(x => x.findings.map(f => ({ rule: x.rule_id, message: f.message }))) ?? [])
+      }
     }
   }
   catch (e: unknown) {
@@ -175,14 +198,30 @@ async function generateDoc() {
     }).catch(() => {
       // якщо 409 — документ вже є, продовжуємо до generate
     })
-    const res = await apiFetch<{ report: ValidationReport; pdfa: PdfaInfo | null }>(
+    const res = await apiFetch<{
+      doc_id: string
+      report: {
+        conforms: boolean
+        findings_count: number
+        results: Array<{ rule_id: string; clause: string; conforms: boolean; findings: Array<{ message: string }> }>
+      }
+      pdfa: { conforms: boolean; issues: string[] } | null
+    }>(
       `/documents/${form.doc_id}/generate`,
       { method: 'POST' }
     )
-    report.value = res.report
+    // нормалізуємо до внутрішнього формату
+    const r = res.report
+    report.value = {
+      compliant: r.conforms,
+      rules_passed: r.results.filter(x => x.conforms).length,
+      findings: r.results
+        .filter(x => !x.conforms)
+        .flatMap(x => x.findings.map(f => ({ rule: x.rule_id, message: f.message })))
+    }
     pdfaInfo.value = res.pdfa
     await reloadDocs()
-    toast.add({ title: res.report.compliant ? 'Документ відповідає ДСТУ' : 'Є зауваження', color: res.report.compliant ? 'success' : 'warning' })
+    toast.add({ title: r.conforms ? 'Документ відповідає ДСТУ' : 'Є зауваження', color: r.conforms ? 'success' : 'warning' })
   }
   catch (e: unknown) {
     toast.add({ title: 'Помилка генерації', description: String(e), color: 'error' })
@@ -512,7 +551,7 @@ onMounted(async () => {
                 {{ report.compliant ? 'ВІДПОВІДАЄ' : 'Є зауваження' }} правил: {{ report.rules_passed }}
               </span>
             </div>
-            <div v-if="report.findings.length" class="space-y-1">
+            <div v-if="report.findings?.length" class="space-y-1">
               <div
                 v-for="f in report.findings"
                 :key="f.rule"
