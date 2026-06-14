@@ -180,6 +180,7 @@ const autoRegister = ref(true)
 const report = ref<ValidationReport | null>(null)
 const pdfaInfo = ref<PdfaInfo | null>(null)
 const docStatus = ref<string>('')
+const selectedIsScanned = ref(false)
 const signerList = ref<SignerEntry[]>([])
 const generating = ref(false)
 const submitting = ref(false)
@@ -290,6 +291,7 @@ async function selectDoc(doc: DocEntry) {
     const fr = full as Record<string, unknown>
     if (fr.reg_index) form.reg_index = String(fr.reg_index)
     if (fr.reg_date) form.date_text = String(fr.reg_date)
+    selectedIsScanned.value = Boolean(fr.is_scanned)
     docStatus.value = full.status
     signerList.value = full.signers.map(s => ({
       name: s.full_name,
@@ -340,6 +342,7 @@ function newDocument() {
   report.value = null
   pdfaInfo.value = null
   docStatus.value = ''
+  selectedIsScanned.value = false
   signerList.value = []
 }
 
@@ -983,7 +986,13 @@ onMounted(async () => {
               help="наскрізний індекс за типом документа + поточна дата при поданні у чергу"
             />
 
-            <UFormField label="Текст (кожен абзац — з нового рядка)">
+            <div v-if="selectedIsScanned" class="flex items-center gap-2 p-3 rounded border border-default text-sm text-muted">
+              <UIcon name="i-lucide-scan-line" class="text-primary flex-shrink-0" />
+              Скан-копія: оригіналом є завантажений файл. Текст не редагується —
+              документ лише підписують КЕП.
+            </div>
+
+            <UFormField v-else label="Текст (кожен абзац — з нового рядка)">
               <UTextarea v-model="form.body" :rows="5" class="w-full" />
             </UFormField>
 
@@ -992,10 +1001,10 @@ onMounted(async () => {
             </UFormField>
 
             <div class="flex gap-2 flex-wrap">
-              <UButton icon="i-lucide-save" @click="createDoc">
+              <UButton v-if="!selectedIsScanned" icon="i-lucide-save" @click="createDoc">
                 Зберегти картку
               </UButton>
-              <UButton variant="outline" icon="i-lucide-cog" :loading="generating" @click="generateDoc">
+              <UButton v-if="!selectedIsScanned" variant="outline" icon="i-lucide-cog" :loading="generating" @click="generateDoc">
                 Згенерувати + валідація
               </UButton>
               <UButton variant="outline" icon="i-lucide-eye" @click="openViewer">
