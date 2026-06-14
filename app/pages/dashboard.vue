@@ -45,8 +45,16 @@ const euStatus = ref('Завантаження бібліотеки EUSign…')
 const keySource = ref<'file' | 'token'>('file')
 const keyPass = ref('')
 const keyFile = ref<File | null>(null)
-const caList = ref<string[]>([])
+const caList = ref<Array<{ title: string }>>([])
+const caIndex = ref(0)
 const signing = ref(false)
+const signStep = ref('')
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let euSignFactory: any = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let euWidget: any = null
+let widgetInited = false
 
 interface DocEntry {
   doc_id: string
@@ -288,23 +296,96 @@ async function downloadAsice() {
 
 // --- підписати КЕП ---
 async function signCurrent() {
+  if (!euReady.value && keySource.value === 'file') {
+    toast.add({ title: 'EUSign не готовий', color: 'error' })
+    return
+  }
   signing.value = true
+  signStep.value = 'manifest'
   try {
-    // EUSign підписує на клієнті — надсилаємо p7s на сервер
-    const p7s = await (window as unknown as { EUSign: { sign: (pass: string, file: File) => Promise<string> } })
-      .EUSign.sign(keyPass.value, keyFile.value!)
+    const apiBase = useRuntimeConfig().public.apiBase
+    // 1. отримуємо manifest
+    const mRes = await fetch(`${apiBase}/documents/${form.doc_id}/manifest`, {
+      headers: { Authorization: `Bearer ${useAuth().token.value}` }
+    })
+    if (!mRes.ok) throw new Error('маніфест: ' + await mRes.text())
+    const manifest = await mRes.text()
+
+    let cmsB64: string
+    if (keySource.value === 'token') {
+      // iframe widget ІІТ
+      if (!euWidget) throw new Error('віджет ІІТ не ініціалізовано')
+      signStep.value = 'key'
+      await euWidget.ReadPrivateKey()
+      signStep.value = 'sign'
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const EU = (window as any).EndUser
+      cmsB64 = await euWidget.SignData(
+        manifest, true, true,
+        EU.SignAlgo.DSTU4145WithGOST34311, null,
+        EU.SignType.CAdES_X_Long
+      )
+    } else {
+      // файловий ключ через euscpfactory
+      if (!euSignFactory) throw new Error('EUSign factory не готовий')
+      signStep.value = 'key'
+      euSignFactory.setCASettings(caIndex.value >= 0 ? caIndex.value : -1)
+      euSignFactory.pkFilePassword = keyPass.value
+      euSignFactory.pkFileItemIndex = -1
+      euSignFactory.readPrivateKeyButtonClick()
+      if (!euSignFactory.pkReaded) throw new Error('не вдалося прочитати ключ — перевірте пароль і файл')
+      signStep.value = 'sign'
+      const manifestBytes = new TextEncoder().encode(manifest)
+      cmsB64 = euSignFactory.signData(manifestBytes, false, true, 'def')
+    }
+
+    if (!cmsB64) throw new Error('підпис не сформовано')
+
+    // 2. знаходимо активного підписанта
+    signStep.value = 'send'
+    const next = signerList.value.find(s => s.status === 'pending')
+    if (!next) throw new Error('немає активного підписанта (подайте у чергу)')
+
     await apiFetch(`/documents/${form.doc_id}/sign`, {
       method: 'POST',
-      body: { p7s, signer_index: signerList.value.findIndex(s => s.status === 'pending') }
+      body: {
+        signer_order_index: signerList.value.indexOf(next),
+        signature_b64: cmsB64,
+        signer: next.name,
+        signer_position: next.position
+      }
     })
-    toast.add({ title: 'Підписано' })
-    await submitDoc()
+    signStep.value = ''
+    toast.add({ title: `Підписано: ${next.name}`, color: 'success' })
+    await selectDoc({ doc_id: form.doc_id } as DocEntry)
+    await reloadDocs()
   }
   catch (e: unknown) {
+    signStep.value = ''
     toast.add({ title: 'Помилка підписання', description: String(e), color: 'error' })
   }
   finally {
     signing.value = false
+  }
+}
+
+function initWidget() {
+  if (widgetInited) return
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const EU = (window as any).EndUser
+  if (typeof EU === 'undefined') {
+    euStatus.value = 'eusign.js не завантажено — перезавантажте сторінку'
+    return
+  }
+  try {
+    euWidget = new EU(
+      'sign-widget-parent', 'sign-widget',
+      'https://eu.iit.com.ua/sign-widget/v20200922/',
+      EU.FormType.ReadPKey
+    )
+    widgetInited = true
+  } catch (e) {
+    euStatus.value = `Помилка ініціалізації віджета: ${e}`
   }
 }
 
@@ -330,18 +411,37 @@ function buildPayload() {
 // ініціалізація
 onMounted(async () => {
   await reloadDocs()
-  // ініціалізація EUSign
-  if (typeof window !== 'undefined' && (window as unknown as { EUSign?: unknown }).EUSign) {
-    euReady.value = true
-    euStatus.value = 'EUSign готовий. Оберіть спосіб ключа.'
-    try {
-      const cas = await (window as unknown as { EUSign: { getCAs: () => Promise<string[]> } }).EUSign.getCAs()
-      caList.value = cas
+  // завантажуємо eusign.js (EndUser widget helper) динамічно
+  await new Promise<void>((resolve) => {
+    if ((window as unknown as { EndUser?: unknown }).EndUser) { resolve(); return }
+    const s = document.createElement('script')
+    s.src = '/eusign.js'
+    s.onload = () => resolve()
+    s.onerror = () => resolve() // не блокуємо якщо недоступний
+    document.head.appendChild(s)
+  })
+
+  // завантажуємо euscpfactory.js (WASM crypto) з порталу через Nitro proxy
+  try {
+    const mod = await import(/* @vite-ignore */ `/api/eusign/modules/euscpfactory.js`)
+    euSignFactory = mod.euSignFactory
+    euSignFactory.onerror = (m: string) => toast.add({ title: 'EUSign: ' + m, color: 'error' })
+    euSignFactory.onChangeCAs = () => {
+      if (euSignFactory?.CAsServers) caList.value = euSignFactory.CAsServers
     }
-    catch { /* EUSign може не мати getCAs */ }
+    const poll = setInterval(() => {
+      if (euSignFactory?.isReady?.()) {
+        clearInterval(poll)
+        euReady.value = true
+        if (euSignFactory.CAsServers) caList.value = euSignFactory.CAsServers
+        euStatus.value = 'EUSign готовий. Оберіть спосіб ключа.'
+      }
+    }, 400)
+    // файл ключа
+    // буде прив'язано через @change в шаблоні
   }
-  else {
-    euStatus.value = 'Бібліотека EUSign не завантажена. Перевірте підключення.'
+  catch (err) {
+    euStatus.value = `Не вдалося завантажити EUSign: ${err} — підпис недоступний, решта порталу працює.`
   }
 })
 </script>
@@ -647,24 +747,30 @@ onMounted(async () => {
                   { label: 'Апаратний токен (е.Ключ, Алмаз, ID-картка…)', value: 'token' }
                 ]"
                 class="w-full"
+                @update:model-value="(v) => { if (v === 'token') initWidget() }"
               />
             </UFormField>
 
-            <div v-if="keySource === 'token'" class="ui-info-message text-sm text-muted p-3 rounded border border-default">
-              Підпис апаратним токеном через офіційний віджет ІІТ.
-              <div id="sign-widget-parent" class="mt-2" />
+            <div v-if="keySource === 'token'" class="text-sm text-muted p-3 rounded border border-default space-y-2">
+              <div>Підпис апаратним токеном через офіційний віджет ІІТ.</div>
+              <div id="sign-widget-parent" class="mt-2 min-h-[200px]" />
             </div>
 
             <template v-else>
               <UFormField v-if="caList.length" label="Кваліфікований надавач (КНЕДП)">
-                <USelect :items="caList" class="w-full" />
+                <USelect
+                  v-model="caIndex"
+                  :items="caList.map((c, i) => ({ label: c.title, value: i }))"
+                  class="w-full"
+                />
               </UFormField>
 
               <UFormField label="Файл особистого ключа (.dat / .pfx / .jks)">
                 <input
                   type="file"
+                  accept=".dat,.pfx,.jks,.p12,.zs2"
                   class="text-sm"
-                  @change="(e) => keyFile = (e.target as HTMLInputElement).files?.[0] ?? null"
+                  @change="(e) => { const f = (e.target as HTMLInputElement).files; if (euSignFactory && f?.length) euSignFactory.setPrivateKeyFile(f[0]); keyFile = f?.[0] ?? null }"
                 >
               </UFormField>
             </template>
@@ -673,12 +779,22 @@ onMounted(async () => {
               <UInput v-model="keyPass" type="password" placeholder="••••••" class="w-full" />
             </UFormField>
 
+            <div v-if="signStep" class="text-xs text-muted flex items-center gap-2">
+              <UIcon name="i-lucide-loader-circle" class="animate-spin" />
+              {{
+                signStep === 'manifest' ? 'Формування даних для підпису…' :
+                signStep === 'key' ? 'Зчитування ключа…' :
+                signStep === 'sign' ? 'Накладання КЕП (ДСТУ 4145)…' :
+                signStep === 'send' ? 'Передавання підпису на сервер…' : signStep
+              }}
+            </div>
+
             <div class="flex gap-2">
               <UButton
                 icon="i-lucide-pen-tool"
                 color="success"
                 :loading="signing"
-                :disabled="!euReady || signerList.every(s => s.status !== 'pending')"
+                :disabled="(!euReady && keySource === 'file') || signerList.every(s => s.status !== 'pending')"
                 @click="signCurrent"
               >
                 Підписати поточним у черзі
