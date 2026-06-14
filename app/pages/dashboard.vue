@@ -18,6 +18,53 @@ const selectedId = ref<string | null>(null)
 const activeCategory = ref<string>('all')
 const searchQuery = ref('')
 
+// --- PDF-вьювер ---
+const viewerOpen = ref(false)
+const viewerUrl = ref<string>('')
+const viewerLoading = ref(false)
+const viewerTitle = ref('')
+const { token } = useAuth()
+
+async function openViewer() {
+  if (form.fmt !== 'pdf') {
+    toast.add({ title: 'Перегляд доступний лише для PDF', color: 'warning' })
+    return
+  }
+  viewerLoading.value = true
+  viewerOpen.value = true
+  viewerTitle.value = form.title || form.doc_id
+  try {
+    const apiBase = useRuntimeConfig().public.apiBase
+    const res = await fetch(`${apiBase}/documents/${form.doc_id}/download`, {
+      headers: token.value ? { Authorization: `Bearer ${token.value}` } : {}
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const blob = await res.blob()
+    // звільняємо попередній object URL щоб не текла памʼять
+    if (viewerUrl.value) URL.revokeObjectURL(viewerUrl.value)
+    viewerUrl.value = URL.createObjectURL(blob)
+  }
+  catch (e: unknown) {
+    viewerOpen.value = false
+    toast.add({ title: 'Не вдалося відкрити документ', description: String(e), color: 'error' })
+  }
+  finally {
+    viewerLoading.value = false
+  }
+}
+
+function openViewerInNewTab() {
+  if (viewerUrl.value) window.open(viewerUrl.value, '_blank')
+}
+
+function closeViewer() {
+  viewerOpen.value = false
+  if (viewerUrl.value) {
+    URL.revokeObjectURL(viewerUrl.value)
+    viewerUrl.value = ''
+  }
+}
+
 // --- режим масового вибору на видалення ---
 const selectMode = ref(false)
 const selectedForDelete = ref<Set<string>>(new Set())
@@ -888,6 +935,9 @@ onMounted(async () => {
               <UButton variant="outline" icon="i-lucide-cog" :loading="generating" @click="generateDoc">
                 Згенерувати + валідація
               </UButton>
+              <UButton variant="outline" icon="i-lucide-eye" @click="openViewer">
+                Переглянути
+              </UButton>
               <UButton variant="outline" icon="i-lucide-download" @click="downloadDoc">
                 Завантажити
               </UButton>
@@ -1078,5 +1128,48 @@ onMounted(async () => {
         </UCard>
       </div>
     </div>
+
+    <!-- PDF-ВЬЮВЕР -->
+    <UModal v-model:open="viewerOpen" :ui="{ content: 'max-w-5xl w-full' }">
+      <template #content>
+        <div class="flex flex-col h-[85vh]">
+          <div class="flex items-center justify-between p-3 border-b border-default">
+            <div class="flex items-center gap-2 font-medium text-sm min-w-0">
+              <UIcon name="i-lucide-file-text" class="text-primary flex-shrink-0" />
+              <span class="truncate">{{ viewerTitle }}</span>
+            </div>
+            <div class="flex items-center gap-1 flex-shrink-0">
+              <UButton
+                icon="i-lucide-download"
+                variant="ghost"
+                size="xs"
+                title="Завантажити"
+                @click="downloadDoc"
+              />
+              <UButton
+                icon="i-lucide-external-link"
+                variant="ghost"
+                size="xs"
+                title="Відкрити в новій вкладці"
+                :disabled="!viewerUrl"
+                @click="openViewerInNewTab"
+              />
+              <UButton icon="i-lucide-x" variant="ghost" size="xs" @click="closeViewer" />
+            </div>
+          </div>
+          <div class="flex-1 relative bg-elevated">
+            <div v-if="viewerLoading" class="absolute inset-0 flex items-center justify-center">
+              <UIcon name="i-lucide-loader-circle" class="animate-spin text-2xl text-muted" />
+            </div>
+            <iframe
+              v-if="viewerUrl"
+              :src="viewerUrl"
+              class="w-full h-full border-0"
+              title="PDF перегляд"
+            />
+          </div>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>
