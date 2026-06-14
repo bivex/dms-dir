@@ -100,6 +100,7 @@ interface DocEntry {
   doc_type: string
   status: string
   created_at: string
+  archived?: boolean
 }
 
 interface ValidationReport {
@@ -122,6 +123,10 @@ interface SignerEntry {
 // --- вибраний документ ---
 const selectedDoc = computed(() => docs.value.find(d => d.doc_id === selectedId.value) ?? null)
 
+// лічильники категорій
+const archivedCount = computed(() => docs.value.filter(d => d.archived).length)
+const activeCount = computed(() => docs.value.filter(d => !d.archived).length)
+
 const filteredDocs = computed(() => {
   let list = docs.value
   if (searchQuery.value) {
@@ -130,10 +135,11 @@ const filteredDocs = computed(() => {
       d.title.toLowerCase().includes(q) || d.doc_id.toLowerCase().includes(q)
     )
   }
-  if (activeCategory.value === 'favorites') return list.filter(d => favorites.value.has(d.doc_id))
-  if (activeCategory.value === 'archive') return list.filter(d => d.status === 'archived')
+  if (activeCategory.value === 'favorites') return list.filter(d => favorites.value.has(d.doc_id) && !d.archived)
+  if (activeCategory.value === 'archive') return list.filter(d => d.archived)
   if (activeCategory.value === 'trash') return list.filter(d => d.status === 'deleted')
-  return list
+  // звичайні категорії ховають архівовані документи
+  return list.filter(d => !d.archived)
 })
 
 // --- завантаження списку ---
@@ -383,6 +389,30 @@ async function deleteSelected() {
   await reloadDocs()
 }
 
+// --- архівування ---
+async function archiveDoc(docId: string) {
+  try {
+    await apiFetch(`/documents/${docId}/archive`, { method: 'POST' })
+    toast.add({ title: 'Переміщено в архів' })
+    if (selectedId.value === docId) selectedId.value = null
+    await reloadDocs()
+  }
+  catch (e: unknown) {
+    toast.add({ title: 'Помилка архівування', description: String(e), color: 'error' })
+  }
+}
+
+async function unarchiveDoc(docId: string) {
+  try {
+    await apiFetch(`/documents/${docId}/unarchive`, { method: 'POST' })
+    toast.add({ title: 'Відновлено з архіву' })
+    await reloadDocs()
+  }
+  catch (e: unknown) {
+    toast.add({ title: 'Помилка відновлення', description: String(e), color: 'error' })
+  }
+}
+
 // --- подати у чергу ---
 async function submitDoc() {
   submitting.value = true
@@ -621,8 +651,7 @@ onMounted(async () => {
           v-for="cat in [
             { id: 'all', label: 'Всі документи', icon: 'i-lucide-files' },
             { id: 'favorites', label: 'Обрані', icon: 'i-lucide-star' },
-            { id: 'archive', label: 'Архів', icon: 'i-lucide-archive' },
-            { id: 'trash', label: 'Кошик', icon: 'i-lucide-trash-2' }
+            { id: 'archive', label: 'Архів', icon: 'i-lucide-archive' }
           ]"
           :key="cat.id"
           block
@@ -633,8 +662,9 @@ onMounted(async () => {
           @click="activeCategory = cat.id"
         >
           {{ cat.label }}
-          <UBadge v-if="cat.id === 'all'" :label="String(docs.length)" variant="subtle" size="xs" class="ml-auto" />
+          <UBadge v-if="cat.id === 'all'" :label="String(activeCount)" variant="subtle" size="xs" class="ml-auto" />
           <UBadge v-else-if="cat.id === 'favorites' && favorites.size" :label="String(favorites.size)" color="warning" variant="subtle" size="xs" class="ml-auto" />
+          <UBadge v-else-if="cat.id === 'archive' && archivedCount" :label="String(archivedCount)" variant="subtle" size="xs" class="ml-auto" />
         </UButton>
       </nav>
 
@@ -721,6 +751,26 @@ onMounted(async () => {
             :class="isFavorite(doc.doc_id) ? '' : 'opacity-40 hover:opacity-100'"
             :title="isFavorite(doc.doc_id) ? 'Прибрати з обраних' : 'Додати в обрані'"
             @click.stop="toggleFavorite(doc.doc_id)"
+          />
+          <UButton
+            v-if="!selectMode && doc.archived"
+            icon="i-lucide-archive-restore"
+            color="primary"
+            variant="ghost"
+            size="xs"
+            class="opacity-60 hover:opacity-100"
+            title="Відновити з архіву"
+            @click.stop="unarchiveDoc(doc.doc_id)"
+          />
+          <UButton
+            v-else-if="!selectMode"
+            icon="i-lucide-archive"
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            class="opacity-40 hover:opacity-100"
+            title="В архів"
+            @click.stop="archiveDoc(doc.doc_id)"
           />
         </div>
         <div v-if="filteredDocs.length === 0" class="p-6 text-center text-muted text-sm">
