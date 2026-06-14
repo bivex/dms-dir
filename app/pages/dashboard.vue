@@ -26,11 +26,15 @@ const form = reactive({
   doc_type: 'Наказ',
   fmt: 'pdf',
   title: '',
-  date_text: new Date().toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }),
+  date_text: '',
   reg_index: '',
   body: '',
   signers: ''
 })
+
+// авто-реєстрація: індекс і дата присвоюються бекендом при поданні у чергу.
+// Якщо вимкнути — поля стають редагованими і використовуються як є.
+const autoRegister = ref(true)
 
 const report = ref<ValidationReport | null>(null)
 const pdfaInfo = ref<PdfaInfo | null>(null)
@@ -135,6 +139,10 @@ async function selectDoc(doc: DocEntry) {
       const b = cj.body
       form.body = Array.isArray(b) ? b.join('\n') : String(b ?? '')
     }
+    // зареєстровані індекс/дата живуть у колонках БД — вони пріоритетні
+    const fr = full as Record<string, unknown>
+    if (fr.reg_index) form.reg_index = String(fr.reg_index)
+    if (fr.reg_date) form.date_text = String(fr.reg_date)
     docStatus.value = full.status
     signerList.value = full.signers.map(s => ({
       name: s.full_name,
@@ -279,17 +287,28 @@ async function deleteDoc() {
 async function submitDoc() {
   submitting.value = true
   try {
-    const res = await apiFetch<{ status: string; signers: Array<{ full_name: string; position: string; status: string }> }>(
+    const res = await apiFetch<{
+      status: string
+      reg_index?: string
+      reg_date?: string
+      signers: Array<{ full_name: string; position: string; status: string }>
+    }>(
       `/documents/${form.doc_id}/submit`,
-      { method: 'POST' }
+      { method: 'POST', body: { auto_register: autoRegister.value } }
     )
     docStatus.value = res.status
+    // підхопити присвоєні автоматично реєстраційний індекс і дату
+    if (res.reg_index) form.reg_index = res.reg_index
+    if (res.reg_date) form.date_text = res.reg_date
     signerList.value = res.signers.map(s => ({
       name: s.full_name,
       position: s.position,
       status: s.status === 'signed' ? 'signed' : s.status === 'rejected' ? 'rejected' : 'pending'
     }))
-    toast.add({ title: 'Подано у чергу підписання' })
+    toast.add({
+      title: 'Зареєстровано та подано у чергу',
+      description: res.reg_index ? `Індекс №${res.reg_index} від ${res.reg_date}` : undefined
+    })
   }
   catch (e: unknown) {
     toast.add({ title: 'Помилка подачі', description: String(e), color: 'error' })
@@ -611,8 +630,13 @@ onMounted(async () => {
                   class="w-full"
                 />
               </UFormField>
-              <UFormField label="Реєстр. індекс">
-                <UInput v-model="form.reg_index" class="w-full" />
+              <UFormField label="Реєстр. індекс" :help="autoRegister ? 'присвоюється автоматично при поданні' : 'введіть вручну'">
+                <UInput
+                  v-model="form.reg_index"
+                  :disabled="autoRegister"
+                  :placeholder="autoRegister ? 'авто' : '№'"
+                  class="w-full"
+                />
               </UFormField>
             </div>
 
@@ -620,9 +644,20 @@ onMounted(async () => {
               <UInput v-model="form.title" class="w-full" />
             </UFormField>
 
-            <UFormField label="Дата">
-              <UInput v-model="form.date_text" class="w-full" />
+            <UFormField label="Дата реєстрації" :help="autoRegister ? 'присвоюється автоматично при поданні' : 'введіть вручну'">
+              <UInput
+                v-model="form.date_text"
+                :disabled="autoRegister"
+                :placeholder="autoRegister ? 'авто' : '14 червня 2026 р.'"
+                class="w-full"
+              />
             </UFormField>
+
+            <UCheckbox
+              v-model="autoRegister"
+              label="Авто-реєстрація"
+              help="наскрізний індекс за типом документа + поточна дата при поданні у чергу"
+            />
 
             <UFormField label="Текст (кожен абзац — з нового рядка)">
               <UTextarea v-model="form.body" :rows="5" class="w-full" />
