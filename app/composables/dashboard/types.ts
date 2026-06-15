@@ -10,6 +10,9 @@ export interface DocEntry {
   fmt?: string
   created_at: string
   registered_at?: string | null
+  reg_index?: string | null
+  reg_date?: string | null
+  org_name?: string | null
   archived?: boolean
   folder_id?: number | null
 }

@@ -32,6 +32,9 @@ export function useDocuments(deps: {
 
   const selectedId = ref<string | null>(null)
 
+  // швидкий фільтр за статусом: all | draft | pending_approval | pending_signatures | signed | rejected | overdue
+  const statusFilter = ref<string>('all')
+
   // масовий вибір на видалення
   const selectMode = ref(false)
   const selectedForDelete = ref<Set<string>>(new Set())
@@ -40,30 +43,73 @@ export function useDocuments(deps: {
   const selectedDoc = computed(() => docs.value.find(d => d.doc_id === selectedId.value) ?? null)
   const archivedCount = computed(() => docs.value.filter(d => d.archived).length)
   const activeCount = computed(() => docs.value.filter(d => !d.archived).length)
+  // лічильник обраних — лише ті, що реально існують і не в архіві (без «привидів»
+  // від видалених/архівованих документів, які лишились у localStorage)
+  const favoritesCount = computed(() =>
+    docs.value.filter(d => !d.archived && favoritesSet.value.has(d.doc_id)).length
+  )
   const noFolderCount = computed(() =>
     docs.value.filter(d => !d.archived && (d.folder_id ?? null) === null).length
   )
 
+  const _isOverdue = (d: DocEntry): boolean => {
+    // прострочений: не підписаний/не опублікований і дата реєстрації + умовний термін минула.
+    // У моделі немає явного дедлайну документа, тож вважаємо простроченими ті,
+    // що зависли в pending_* понад 7 днів від created_at.
+    if (d.status === 'signed' || d.status === 'published' || d.status === 'rejected') return false
+    if (!d.status.startsWith('pending')) return false
+    const created = d.created_at ? new Date(d.created_at).getTime() : 0
+    if (!created) return false
+    const days = (Date.now() - created) / 86400000
+    return days > 7
+  }
+
+  function _matchesStatus(d: DocEntry): boolean {
+    const f = statusFilter.value
+    if (f === 'all') return true
+    if (f === 'overdue') return _isOverdue(d)
+    return d.status === f
+  }
+
   const filteredDocs = computed(() => {
     let list = docs.value
     if (searchQuery.value) {
-      const q = searchQuery.value.toLowerCase()
+      const q = searchQuery.value.toLowerCase().trim()
+      // розширений пошук: за номером, заголовком, типом, контрагентом, реєстр. індексом
       list = list.filter(d =>
-        d.title.toLowerCase().includes(q) || d.doc_id.toLowerCase().includes(q)
+        d.title.toLowerCase().includes(q)
+        || d.doc_id.toLowerCase().includes(q)
+        || (d.doc_type || '').toLowerCase().includes(q)
+        || (d.org_name || '').toLowerCase().includes(q)
+        || (d.reg_index || '').toLowerCase().includes(q)
       )
     }
-    if (activeCategory.value === 'favorites') return list.filter(d => favoritesSet.value.has(d.doc_id) && !d.archived)
-    if (activeCategory.value === 'archive') return list.filter(d => d.archived)
+    if (activeCategory.value === 'favorites') return list.filter(d => favoritesSet.value.has(d.doc_id) && !d.archived).filter(_matchesStatus)
+    if (activeCategory.value === 'archive') return list.filter(d => d.archived).filter(_matchesStatus)
     if (activeCategory.value === 'trash') return list.filter(d => d.status === 'deleted')
     if (activeCategory.value === 'folder') {
-      return list.filter(d => !d.archived && (d.folder_id ?? null) === activeFolderId.value)
+      return list.filter(d => !d.archived && (d.folder_id ?? null) === activeFolderId.value).filter(_matchesStatus)
     }
     if (activeCategory.value === 'calendar') {
       list = list.filter(d => !d.archived)
-      if (selectedDay.value) return list.filter(d => docDayKey(d) === selectedDay.value)
-      return list
+      if (selectedDay.value) return list.filter(d => docDayKey(d) === selectedDay.value).filter(_matchesStatus)
+      return list.filter(_matchesStatus)
     }
-    return list.filter(d => !d.archived)
+    return list.filter(d => !d.archived).filter(_matchesStatus)
+  })
+
+  // лічильники для бейджів швидких фільтрів (по активних, не архівних)
+  const statusCounts = computed(() => {
+    const active = docs.value.filter(d => !d.archived)
+    return {
+      all: active.length,
+      draft: active.filter(d => d.status === 'draft').length,
+      pending_approval: active.filter(d => d.status === 'pending_approval').length,
+      pending_signatures: active.filter(d => d.status === 'pending_signatures').length,
+      signed: active.filter(d => d.status === 'signed' || d.status === 'published').length,
+      rejected: active.filter(d => d.status === 'rejected').length,
+      overdue: active.filter(_isOverdue).length,
+    }
   })
 
   const activeFolder = computed(() => folders.value.find(f => f.id === activeFolderId.value) ?? null)
@@ -287,8 +333,11 @@ export function useDocuments(deps: {
     selectedDoc,
     archivedCount,
     activeCount,
+    favoritesCount,
     noFolderCount,
     filteredDocs,
+    statusFilter,
+    statusCounts,
     activeFolder,
     listHeaderLabel,
     reloadDocs,

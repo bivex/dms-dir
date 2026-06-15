@@ -2,6 +2,36 @@
 import { useDashboard } from '~/composables/dashboard/useDashboard'
 
 const store = useDashboard()
+
+// швидкі фільтри за статусом
+const quickFilters = [
+  { id: 'all', label: 'Усі' },
+  { id: 'draft', label: 'Чернетки' },
+  { id: 'pending_approval', label: 'На погодженні' },
+  { id: 'pending_signatures', label: 'На підписі' },
+  { id: 'signed', label: 'Підписані' },
+  { id: 'rejected', label: 'Відхилені' },
+  { id: 'overdue', label: 'Прострочені' }
+] as const
+
+// колір/мітка статусу документа для візуального розділення
+function statusMeta(status: string): { color: string; label: string; dot: string } {
+  switch (status) {
+    case 'signed':
+    case 'published':
+      return { color: 'success', label: status === 'published' ? 'Опубліковано' : 'Підписано', dot: 'bg-success' }
+    case 'pending_signatures':
+      return { color: 'warning', label: 'На підписі', dot: 'bg-warning' }
+    case 'pending_approval':
+      return { color: 'warning', label: 'На погодженні', dot: 'bg-amber-400' }
+    case 'draft':
+      return { color: 'info', label: 'Чернетка', dot: 'bg-info' }
+    case 'rejected':
+      return { color: 'error', label: 'Відхилено', dot: 'bg-error' }
+    default:
+      return { color: 'neutral', label: status, dot: 'bg-muted' }
+  }
+}
 </script>
 
 <template>
@@ -30,6 +60,25 @@ const store = useDashboard()
           @click="store.openExportModal()"
         />
       </div>
+    </div>
+
+    <!-- швидкі фільтри за статусом -->
+    <div class="px-2 py-2 border-b border-default flex flex-wrap gap-1">
+      <button
+        v-for="f in quickFilters"
+        :key="f.id"
+        class="px-2 py-0.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1"
+        :class="store.statusFilter.value === f.id
+          ? 'bg-primary text-inverted'
+          : 'bg-elevated/60 text-muted hover:bg-elevated'"
+        @click="store.statusFilter.value = f.id"
+      >
+        {{ f.label }}
+        <span
+          v-if="store.statusCounts.value[f.id]"
+          class="opacity-70"
+        >{{ store.statusCounts.value[f.id] }}</span>
+      </button>
     </div>
 
     <!-- панель масового вибору -->
@@ -90,11 +139,15 @@ const store = useDashboard()
           <div class="text-xs text-muted mt-0.5 flex items-center gap-2">
             <span>{{ doc.doc_id }}</span>
             <UBadge
-              :label="doc.status"
+              :label="statusMeta(doc.status).label"
               size="xs"
-              :color="doc.status === 'signed' ? 'success' : doc.status === 'pending' ? 'warning' : 'neutral'"
+              :color="statusMeta(doc.status).color as any"
               variant="subtle"
-            />
+              class="flex items-center gap-1"
+            >
+              <span class="inline-block w-1.5 h-1.5 rounded-full" :class="statusMeta(doc.status).dot" />
+              {{ statusMeta(doc.status).label }}
+            </UBadge>
           </div>
         </div>
         <UButton

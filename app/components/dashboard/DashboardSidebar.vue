@@ -81,7 +81,7 @@ function handleCategoryClick(catId: string) {
         <UBadge v-if="cat.id === 'all'" :label="String(store.activeCount.value)" variant="subtle" size="xs" class="ml-auto" />
         <UBadge v-else-if="cat.id === 'approvals' && store.myApprovals.value.length" :label="String(store.myApprovals.value.length)" color="warning" variant="subtle" size="xs" class="ml-auto" />
         <UBadge v-else-if="cat.id === 'tasks' && store.myTasks.value.filter(t => t.status !== 'completed').length" :label="String(store.myTasks.value.filter(t => t.status !== 'completed').length)" color="error" variant="subtle" size="xs" class="ml-auto" />
-        <UBadge v-else-if="cat.id === 'favorites' && store.favorites.value.size" :label="String(store.favorites.value.size)" color="warning" variant="subtle" size="xs" class="ml-auto" />
+        <UBadge v-else-if="cat.id === 'favorites' && store.favoritesCount.value" :label="String(store.favoritesCount.value)" color="warning" variant="subtle" size="xs" class="ml-auto" />
         <UBadge v-else-if="cat.id === 'archive' && store.archivedCount.value" :label="String(store.archivedCount.value)" variant="subtle" size="xs" class="ml-auto" />
       </UButton>
 
