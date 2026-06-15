@@ -11,6 +11,7 @@ import { useScanUpload } from './useScanUpload'
 import { useEuSign } from './useEuSign'
 import { useArchiveExport } from './useArchiveExport'
 import { useCounterparties } from './useCounterparties'
+import { useDelivery } from './useDelivery'
 
 /**
  * Склейка всіх composables дашборду в один store + provide/inject-обвʼязка.
@@ -76,6 +77,7 @@ export function createDashboardStore() {
 
   const archiveExport = useArchiveExport()
   const counterparties = useCounterparties({ apiFetch })
+  const delivery = useDelivery({ apiFetch })
 
   // поточна папка відкритого документа (мітка в заголовку картки)
   const selectedFolderId = computed<number | null>(() => {
@@ -245,7 +247,19 @@ export function createDashboardStore() {
     openCreateCounterparty: counterparties.openCreateCounterparty,
     openEditCounterparty: counterparties.openEditCounterparty,
     saveCounterparty: counterparties.saveCounterparty,
-    deleteCounterparty: counterparties.deleteCounterparty
+    deleteCounterparty: counterparties.deleteCounterparty,
+    // delivery
+    deliveryLoading: delivery.deliveryLoading,
+    deliveryExporting: delivery.deliveryExporting,
+    deliverySender: delivery.deliverySender,
+    deliveryRecipient: delivery.deliveryRecipient,
+    deliveryItems: delivery.deliveryItems,
+    generateF107: delivery.generateF107,
+    generateLabel: delivery.generateLabel,
+    fetchDeliveryDetails: delivery.fetchDeliveryDetails,
+    addDeliveryItem: delivery.addItem,
+    removeDeliveryItem: delivery.removeItem,
+    triggerDeliveryExport: delivery.triggerDeliveryExport
   }
 }
 
