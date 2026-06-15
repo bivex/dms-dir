@@ -25,6 +25,7 @@ const store = useDashboard()
             v-if="store.docStatus.value === 'draft' || !store.signerList.value.length"
             icon="i-lucide-send"
             :loading="store.submitting.value"
+            :disabled="!store.signerList.value.length"
             size="sm"
             @click="store.submitDoc()"
           >
@@ -44,8 +45,9 @@ const store = useDashboard()
           </span>
         </div>
 
-        <div v-if="store.signerList.value.length === 0" class="text-muted text-sm">
-          Збережіть картку й подайте у чергу.
+        <div v-if="store.signerList.value.length === 0" class="flex items-start gap-2 text-warning text-sm">
+          <UIcon name="i-lucide-triangle-alert" class="flex-shrink-0 mt-0.5" />
+          <span>Додайте хоча б одного підписанта у картці документа («Підписанти») і збережіть картку, перш ніж подавати у чергу.</span>
         </div>
         <UTimeline v-else :items="store.signerTimeline.value" />
       </div>

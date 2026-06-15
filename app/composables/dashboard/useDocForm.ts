@@ -160,7 +160,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
   }) {
     form.doc_id = full.doc_id
     form.title = full.title
-    form.doc_type = full.doc_type
+    form.doc_type = full.doc_type || ''
     form.fmt = full.fmt ?? 'pdf'
     form.signers = full.signers.map(s => `${s.full_name} | ${s.position}`).join('\n')
     form.journal_id = full.journal_id ?? null
@@ -177,6 +177,9 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       form.subject_type = String(cj.subject_type ?? form.subject_type)
       form.date_text = String(cj.date_text ?? '')
       form.reg_index = String(cj.reg_index ?? '')
+      // doc_type до реєстрації живе лише в content_json (колонка doc_type — null),
+      // тож читаємо звідти з фолбеком на колонку.
+      if (cj.doc_type) form.doc_type = String(cj.doc_type)
       const b = cj.body
       form.body = Array.isArray(b) ? b.join('\n') : String(b ?? '')
     }
