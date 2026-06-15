@@ -1,17 +1,28 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useDashboard } from '~/composables/dashboard/useDashboard'
 
 const store = useDashboard()
 const { form } = store
 
 const resolutionText = ref('')
-const tasks = ref<Array<{ executor: string; description: string; due_date: string }>>([])
+const tasks = ref<Array<{ executor: string; executor_user_id: number | null; description: string; due_date: string }>>([])
 
 // Draft task inputs
-const nextExecutor = ref('')
+const nextExecutorId = ref<number | string | undefined>(undefined)
 const nextDescription = ref('')
 const nextDueDate = ref('')
+
+onMounted(() => {
+  store.reloadUsers()
+})
+
+const userOptions = computed(() =>
+  store.users.value.map((u: any) => ({
+    label: `${u.name}${u.position ? ' — ' + u.position : ''}`,
+    value: u.id
+  }))
+)
 
 watch(() => form.doc_id, (newId) => {
   if (newId && (store.docStatus.value === 'signed' || store.docStatus.value === 'published')) {
@@ -20,15 +31,18 @@ watch(() => form.doc_id, (newId) => {
 }, { immediate: true })
 
 function addTask() {
-  if (!nextExecutor.value.trim() || !nextDescription.value.trim() || !nextDueDate.value.trim()) {
+  const uid = Number(nextExecutorId.value)
+  const user = store.users.value.find((u: any) => u.id === uid)
+  if (!user || !nextDescription.value.trim() || !nextDueDate.value.trim()) {
     return
   }
   tasks.value.push({
-    executor: nextExecutor.value.trim(),
+    executor: user.name,
+    executor_user_id: user.id,
     description: nextDescription.value.trim(),
     due_date: nextDueDate.value.trim()
   })
-  nextExecutor.value = ''
+  nextExecutorId.value = undefined
   nextDescription.value = ''
   nextDueDate.value = ''
 }
@@ -121,8 +135,14 @@ function formatDate(dateStr?: string | null) {
 
           <!-- Add draft task form -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-end bg-default/5 p-3 rounded border border-default/50">
-            <UFormField label="Виконавець (ПІБ / Ім'я)" class="text-xs">
-              <UInput v-model="nextExecutor" placeholder="Іванов І.І." size="sm" class="w-full" />
+            <UFormField label="Виконавець (користувач системи)" class="text-xs">
+              <USelect
+                v-model="nextExecutorId"
+                :items="userOptions"
+                placeholder="Оберіть виконавця…"
+                size="sm"
+                class="w-full"
+              />
             </UFormField>
             <UFormField label="Опис завдання" class="text-xs">
               <UInput v-model="nextDescription" placeholder="Підготувати відповідь..." size="sm" class="w-full" />

@@ -14,6 +14,7 @@ export interface TaskEntry {
 export interface ResolutionTask {
   id?: number
   executor: string
+  executor_user_id?: number | null
   description: string
   due_date: string
   status?: string
@@ -84,7 +85,7 @@ export function useTasks(deps: {
     }
   }
 
-  async function addDocResolution(docId: string, text: string, tasks: Array<{ executor: string, description: string, due_date: string }>) {
+  async function addDocResolution(docId: string, text: string, tasks: Array<{ executor: string, executor_user_id?: number | null, description: string, due_date: string }>) {
     savingResolution.value = true
     try {
       const res = await apiFetch<{ status: string }>(`/documents/${docId}/resolutions`, {
