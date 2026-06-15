@@ -77,17 +77,20 @@ const viewerMode = ref<'pdf' | 'docx'>('pdf')
 const viewerLoading = ref(false)
 const viewerTitle = ref('')
 
-async function openViewer() {
+async function openViewer(target?: { doc_id: string, title?: string, fmt?: string }) {
+  const docId = target?.doc_id ?? form.doc_id
+  const docTitle = target?.title ?? form.title ?? docId
+  const docFmt = target?.fmt ?? form.fmt
   viewerLoading.value = true
   viewerOpen.value = true
-  viewerTitle.value = form.title || form.doc_id
-  viewerMode.value = form.fmt === 'docx' ? 'docx' : 'pdf'
+  viewerTitle.value = docTitle || docId
+  viewerMode.value = docFmt === 'docx' ? 'docx' : 'pdf'
   // прибрати попередній стан
   if (viewerUrl.value) { URL.revokeObjectURL(viewerUrl.value); viewerUrl.value = '' }
   viewerHtml.value = ''
   try {
     const apiBase = useRuntimeConfig().public.apiBase
-    const res = await fetch(`${apiBase}/documents/${form.doc_id}/download`, {
+    const res = await fetch(`${apiBase}/documents/${docId}/download`, {
       headers: token.value ? { Authorization: `Bearer ${token.value}` } : {}
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -110,6 +113,11 @@ async function openViewer() {
   finally {
     viewerLoading.value = false
   }
+}
+
+// швидкий перегляд прямо зі списку — не змінює відкриту картку
+function previewDoc(doc: DocEntry) {
+  openViewer({ doc_id: doc.doc_id, title: doc.title, fmt: doc.fmt })
 }
 
 function openViewerInNewTab() {
@@ -207,7 +215,9 @@ interface DocEntry {
   title: string
   doc_type: string
   status: string
+  fmt?: string
   created_at: string
+  registered_at?: string | null
   archived?: boolean
 }
 
@@ -246,9 +256,137 @@ const filteredDocs = computed(() => {
   if (activeCategory.value === 'favorites') return list.filter(d => favorites.value.has(d.doc_id) && !d.archived)
   if (activeCategory.value === 'archive') return list.filter(d => d.archived)
   if (activeCategory.value === 'trash') return list.filter(d => d.status === 'deleted')
+  if (activeCategory.value === 'calendar') {
+    list = list.filter(d => !d.archived)
+    // якщо обрано день — лишаємо документи саме цього дня
+    if (selectedDay.value) return list.filter(d => docDayKey(d) === selectedDay.value)
+    return list
+  }
   // звичайні категорії ховають архівовані документи
   return list.filter(d => !d.archived)
 })
+
+// ====================== КАЛЕНДАР ДОКУМЕНТІВ ======================
+// ефективна дата документа: реєстрація → дата реєстр. → створення
+const selectedDay = ref<string | null>(null)        // 'YYYY-MM-DD'
+const calCursor = ref(new Date())                    // місяць, що відображається
+
+function docDate(d: DocEntry): Date | null {
+  const raw = d.registered_at || d.created_at
+  if (!raw) return null
+  const dt = new Date(raw)
+  return Number.isNaN(dt.getTime()) ? null : dt
+}
+
+function docDayKey(d: DocEntry): string | null {
+  const dt = docDate(d)
+  if (!dt) return null
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+}
+
+// мапа day-key → документи (без архівних), з урахуванням пошуку
+const docsByDay = computed<Map<string, DocEntry[]>>(() => {
+  const map = new Map<string, DocEntry[]>()
+  let list = docs.value.filter(d => !d.archived)
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    list = list.filter(d => d.title.toLowerCase().includes(q) || d.doc_id.toLowerCase().includes(q))
+  }
+  for (const d of list) {
+    const k = docDayKey(d)
+    if (!k) continue
+    const arr = map.get(k)
+    if (arr) arr.push(d)
+    else map.set(k, [d])
+  }
+  return map
+})
+
+const UA_MONTHS = [
+  'Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
+  'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'
+]
+const UA_WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд']
+
+const calMonthLabel = computed(() =>
+  `${UA_MONTHS[calCursor.value.getMonth()]} ${calCursor.value.getFullYear()}`
+)
+
+interface CalCell {
+  key: string
+  day: number
+  inMonth: boolean
+  isToday: boolean
+  count: number
+}
+
+// сітка 6×7 з понеділка
+const calGrid = computed<CalCell[]>(() => {
+  const year = calCursor.value.getFullYear()
+  const month = calCursor.value.getMonth()
+  const first = new Date(year, month, 1)
+  // зсув: getDay() 0=Нд → робимо Пн=0
+  const lead = (first.getDay() + 6) % 7
+  const start = new Date(year, month, 1 - lead)
+  const todayKey = (() => {
+    const t = new Date()
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+  })()
+  const cells: CalCell[] = []
+  for (let i = 0; i < 42; i++) {
+    const dt = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)
+    const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+    cells.push({
+      key,
+      day: dt.getDate(),
+      inMonth: dt.getMonth() === month,
+      isToday: key === todayKey,
+      count: docsByDay.value.get(key)?.length ?? 0
+    })
+  }
+  return cells
+})
+
+function calPrevMonth() {
+  calCursor.value = new Date(calCursor.value.getFullYear(), calCursor.value.getMonth() - 1, 1)
+}
+
+function calNextMonth() {
+  calCursor.value = new Date(calCursor.value.getFullYear(), calCursor.value.getMonth() + 1, 1)
+}
+
+function calToday() {
+  const t = new Date()
+  calCursor.value = new Date(t.getFullYear(), t.getMonth(), 1)
+  selectedDay.value = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+}
+
+function pickDay(cell: CalCell) {
+  if (cell.count === 0 && !cell.inMonth) return
+  // повторний клік по обраному дню — зняти фільтр
+  selectedDay.value = selectedDay.value === cell.key ? null : cell.key
+}
+
+// людиночитна підказка обраного дня
+const selectedDayLabel = computed(() => {
+  if (!selectedDay.value) return ''
+  const [y, m, d] = selectedDay.value.split('-').map(Number)
+  return `${d} ${UA_MONTHS[(m ?? 1) - 1]?.toLowerCase()} ${y}`
+})
+
+function openCalendar() {
+  activeCategory.value = 'calendar'
+  // перейти на місяць найсвіжішого документа, якщо поточний порожній
+  if (docsByDay.value.size && ![...docsByDay.value.keys()].some(k => k.startsWith(
+    `${calCursor.value.getFullYear()}-${String(calCursor.value.getMonth() + 1).padStart(2, '0')}`
+  ))) {
+    const latest = [...docsByDay.value.keys()].sort().at(-1)
+    if (latest) {
+      const [y, m] = latest.split('-').map(Number)
+      calCursor.value = new Date(y ?? 2026, (m ?? 1) - 1, 1)
+    }
+  }
+}
 
 // --- завантаження списку ---
 async function reloadDocs() {
@@ -763,6 +901,7 @@ onMounted(async () => {
         <UButton
           v-for="cat in [
             { id: 'all', label: 'Всі документи', icon: 'i-lucide-files' },
+            { id: 'calendar', label: 'Календар', icon: 'i-lucide-calendar-days' },
             { id: 'favorites', label: 'Обрані', icon: 'i-lucide-star' },
             { id: 'archive', label: 'Архів', icon: 'i-lucide-archive' }
           ]"
@@ -772,7 +911,7 @@ onMounted(async () => {
           :color="activeCategory === cat.id ? 'primary' : 'neutral'"
           :icon="cat.icon"
           class="justify-start mb-0.5"
-          @click="activeCategory = cat.id"
+          @click="cat.id === 'calendar' ? openCalendar() : (activeCategory = cat.id)"
         >
           {{ cat.label }}
           <UBadge v-if="cat.id === 'all'" :label="String(activeCount)" variant="subtle" size="xs" class="ml-auto" />
@@ -857,6 +996,16 @@ onMounted(async () => {
           </div>
           <UButton
             v-if="!selectMode"
+            icon="i-lucide-eye"
+            color="primary"
+            variant="ghost"
+            size="xs"
+            class="opacity-40 hover:opacity-100"
+            title="Швидкий перегляд"
+            @click.stop="previewDoc(doc)"
+          />
+          <UButton
+            v-if="!selectMode"
             icon="i-lucide-star"
             :color="isFavorite(doc.doc_id) ? 'warning' : 'neutral'"
             :variant="isFavorite(doc.doc_id) ? 'soft' : 'ghost'"
@@ -894,7 +1043,80 @@ onMounted(async () => {
 
     <!-- ГОЛОВНА ОБЛАСТЬ -->
     <div class="flex-1 overflow-y-auto">
-      <div v-if="!selectedId && !form.title" class="flex items-center justify-center h-full">
+      <!-- КАЛЕНДАР ДОКУМЕНТІВ -->
+      <div v-if="activeCategory === 'calendar' && !selectedId" class="max-w-3xl mx-auto p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <UIcon name="i-lucide-calendar-days" class="text-primary text-xl" />
+            <div>
+              <div class="font-semibold">Календар документів</div>
+              <div class="text-xs text-muted">за датою реєстрації</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1">
+            <UButton icon="i-lucide-chevron-left" variant="ghost" color="neutral" size="sm" @click="calPrevMonth" />
+            <span class="text-sm font-medium w-36 text-center select-none">{{ calMonthLabel }}</span>
+            <UButton icon="i-lucide-chevron-right" variant="ghost" color="neutral" size="sm" @click="calNextMonth" />
+            <UButton variant="soft" size="xs" class="ml-2" @click="calToday">
+              Сьогодні
+            </UButton>
+          </div>
+        </div>
+
+        <UCard :ui="{ body: 'p-3 sm:p-4' }">
+          <!-- заголовки днів тижня -->
+          <div class="grid grid-cols-7 gap-1 mb-1">
+            <div
+              v-for="wd in UA_WEEKDAYS"
+              :key="wd"
+              class="text-center text-xs font-medium text-muted py-1"
+            >
+              {{ wd }}
+            </div>
+          </div>
+          <!-- сітка днів -->
+          <div class="grid grid-cols-7 gap-1">
+            <button
+              v-for="cell in calGrid"
+              :key="cell.key"
+              type="button"
+              class="relative aspect-square rounded-md flex flex-col items-center justify-center text-sm transition-colors border border-transparent"
+              :class="[
+                cell.inMonth ? 'text-default' : 'text-muted/40',
+                cell.count > 0 ? 'cursor-pointer hover:bg-elevated hover:border-default' : 'cursor-default',
+                selectedDay === cell.key ? 'bg-primary/15 border-primary text-primary font-semibold' : '',
+                cell.isToday && selectedDay !== cell.key ? 'ring-1 ring-inset ring-primary/40' : ''
+              ]"
+              @click="pickDay(cell)"
+            >
+              <span>{{ cell.day }}</span>
+              <span
+                v-if="cell.count > 0"
+                class="mt-0.5 min-w-4 h-4 px-1 rounded-full text-[10px] leading-4 font-medium"
+                :class="selectedDay === cell.key ? 'bg-primary text-inverted' : 'bg-primary/20 text-primary'"
+              >
+                {{ cell.count }}
+              </span>
+            </button>
+          </div>
+        </UCard>
+
+        <div class="mt-4 flex items-center gap-2 text-sm">
+          <template v-if="selectedDay">
+            <UIcon name="i-lucide-filter" class="text-primary" />
+            <span class="text-muted">Показано документи за <strong class="text-default">{{ selectedDayLabel }}</strong> ({{ filteredDocs.length }})</span>
+            <UButton variant="ghost" color="neutral" size="xs" icon="i-lucide-x" @click="selectedDay = null">
+              Скинути
+            </UButton>
+          </template>
+          <template v-else>
+            <UIcon name="i-lucide-info" class="text-muted" />
+            <span class="text-muted">Оберіть день з документами — список зліва відфільтрується.</span>
+          </template>
+        </div>
+      </div>
+
+      <div v-else-if="!selectedId && !form.title" class="flex items-center justify-center h-full">
         <div class="text-center text-muted">
           <UIcon name="i-lucide-file-text" class="text-5xl mb-3 opacity-30" />
           <div>Оберіть документ або створіть новий</div>
