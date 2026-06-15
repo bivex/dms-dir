@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DropdownMenuItem } from '@nuxt/ui'
+import type { DropdownMenuItem, StepperItem, TimelineItem } from '@nuxt/ui'
 
 definePageMeta({
   middleware: 'auth',
@@ -221,6 +221,10 @@ const caIndex = ref(0)
 const signing = ref(false)
 const signStep = ref('')
 
+// UI-стан wizard'у: розкриття списку зауважень і юридичних деталей
+const showFindings = ref(true)
+const showLegalDetails = ref(false)
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let euSignFactory: any = null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -312,6 +316,69 @@ const listHeaderLabel = computed(() => {
   if (activeCategory.value === 'calendar') return selectedDay.value ? selectedDayLabel.value : 'Календар'
   return 'Всі документи'
 })
+
+// ====================== WIZARD: степер + статус + timeline ======================
+// Кроки wizard'у — відображають реальний стан документа (не навігаційну позицію).
+// Етапи: 0 Документ · 1 Перевірка · 2 Підписання · 3 Відправлення.
+const stepperItems = computed<StepperItem[]>(() => [
+  { title: 'Документ', description: 'картка та реквізити', icon: 'i-lucide-file-text', value: 'document' },
+  { title: 'Перевірка', description: 'ДСТУ 4163 + НПА', icon: 'i-lucide-clipboard-check', value: 'validation' },
+  { title: 'Підписання', description: 'черга та КЕП', icon: 'i-lucide-pen-tool', value: 'signing' },
+  { title: 'Відправлення', description: 'ASiC-E контейнер', icon: 'i-lucide-send', value: 'delivery' }
+])
+
+// «Найдаліший досягнутий» етап — для індикатора степера (станом документа).
+const activeStepIndex = computed(() => {
+  const st = docStatus.value
+  if (st === 'signed') return 3
+  if (signerList.value.length > 0 || st === 'pending_signatures' || st === 'pending') return 2
+  if (report.value || st === 'generated') return 1
+  return 0
+})
+
+// Заметний статус-бейдж документа (п.3).
+type UiColor = 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
+const statusBadge = computed<{ label: string, color: UiColor, icon: string }>(() => {
+  const st = docStatus.value
+  if (st === 'signed') return { label: 'Підписано', color: 'success', icon: 'i-lucide-circle-check' }
+  if (st === 'pending_signatures' || st === 'pending') return { label: 'Очікує підпису', color: 'warning', icon: 'i-lucide-clock' }
+  if (st === 'rejected') return { label: 'Помилка підпису', color: 'error', icon: 'i-lucide-circle-alert' }
+  if (selectedId.value && report.value && !report.value.compliant) {
+    return { label: 'Є зауваження', color: 'warning', icon: 'i-lucide-triangle-alert' }
+  }
+  return { label: 'Чернетка', color: 'neutral', icon: 'i-lucide-circle-dashed' }
+})
+
+// Формат/тип картки — для іконки в шапці.
+const docFormatLabel = computed(() => {
+  if (selectedIsScanned.value) return 'Скан-копія PDF'
+  return form.fmt === 'docx' ? 'DOCX-документ' : 'PDF-документ'
+})
+
+// Черга підписання → timeline (п.5).
+const signerTimeline = computed<TimelineItem[]>(() =>
+  signerList.value.map((s, i) => ({
+    title: `#${i + 1} ${s.name}`,
+    description: s.position,
+    icon: s.status === 'signed'
+      ? 'i-lucide-circle-check'
+      : s.status === 'rejected'
+        ? 'i-lucide-circle-x'
+        : 'i-lucide-clock',
+    value: String(i)
+  }))
+)
+
+// скрол до секції wizard'у за кліком по кроку степера (без блокування).
+const STEP_SECTION_IDS = ['sec-document', 'sec-validation', 'sec-signing', 'sec-delivery']
+function scrollToStep(v: string | number | undefined) {
+  const idx = typeof v === 'number' ? v : Number(v)
+  if (Number.isNaN(idx)) return
+  const id = STEP_SECTION_IDS[idx]
+  if (id) {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
 
 // ====================== КАЛЕНДАР ДОКУМЕНТІВ ======================
 // ефективна дата документа: реєстрація → дата реєстр. → створення
@@ -1019,6 +1086,12 @@ async function initWidget() {
   }
 }
 
+// обробник файлу ключа з FileDropZone (замість колишнього <input type=file>)
+function onKeyFile(file: File) {
+  if (euSignFactory) euSignFactory.setPrivateKeyFile(file)
+  keyFile.value = file
+}
+
 function buildPayload() {
   const signerLines = form.signers.split('\n').filter(Boolean).map((line, i) => {
     const [full_name, position] = line.split('|').map(s => s.trim())
@@ -1418,57 +1491,81 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div v-else class="max-w-4xl mx-auto p-6 space-y-6">
-        <!-- 1. КАРТКА -->
-        <UCard>
+      <div v-else class="max-w-4xl mx-auto p-6 space-y-5">
+        <!-- ШАПКА-СТЕПЕР: стан документа (клік → скрол до секції, без gate'ів) -->
+        <UStepper
+          :items="stepperItems"
+          :model-value="activeStepIndex"
+          class="px-2"
+          @update:model-value="scrollToStep"
+        />
+
+        <!-- КРОК 1 · Документ -->
+        <UCard id="sec-document">
           <template #header>
-            <div class="flex items-center gap-2 font-semibold">
-              <UIcon name="i-lucide-edit" />
-              1. Картка документа
-              <UDropdownMenu
-                v-if="selectedId"
-                :items="moveToFolderItems"
-                :ui="{ content: 'w-52' }"
-              >
-                <UButton
-                  icon="i-lucide-folder"
-                  variant="ghost"
-                  color="neutral"
-                  size="xs"
-                  class="ml-auto"
-                  title="Перемістити у папку"
-                >
-                  <span
-                    v-if="selectedFolderId !== null"
-                    class="inline-block w-2 h-2 rounded-sm"
-                    :style="{ backgroundColor: folderDotColor(activeFolder?.color) }"
-                  />
-                  {{ selectedFolderId !== null ? (activeFolder?.name ?? 'Папка') : 'Без папки' }}
-                </UButton>
-              </UDropdownMenu>
-              <UButton
-                v-if="selectedId"
-                icon="i-lucide-star"
-                :color="isFavorite(form.doc_id) ? 'warning' : 'neutral'"
-                :variant="isFavorite(form.doc_id) ? 'soft' : 'ghost'"
-                size="xs"
-                :title="isFavorite(form.doc_id) ? 'Прибрати з обраних' : 'Додати в обрані'"
-                @click="toggleFavorite(form.doc_id)"
-              >
-                {{ isFavorite(form.doc_id) ? 'В обраних' : 'В обрані' }}
-              </UButton>
+            <div class="flex items-center gap-3">
+              <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary flex-shrink-0">
+                <UIcon name="i-lucide-file-text" class="text-xl" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="font-semibold truncate">{{ form.title || '(без заголовка)' }}</div>
+                <div class="text-xs text-muted flex items-center gap-2 truncate">
+                  <span>{{ docFormatLabel }}</span>
+                  <span>·</span>
+                  <span class="truncate">{{ form.doc_id }}</span>
+                </div>
+              </div>
+              <UBadge
+                :label="statusBadge.label"
+                :color="statusBadge.color"
+                variant="subtle"
+                size="md"
+                class="flex-shrink-0"
+              />
             </div>
           </template>
 
+          <!-- secondary-тулбар: демотед дії -->
+          <div class="flex items-center gap-1 mb-4 pb-3 border-b border-default flex-wrap">
+            <UButton icon="i-lucide-eye" variant="ghost" color="neutral" size="xs" @click="() => openViewer()">
+              Переглянути
+            </UButton>
+            <UButton icon="i-lucide-download" variant="ghost" color="neutral" size="xs" @click="downloadDoc">
+              Завантажити
+            </UButton>
+            <UDropdownMenu v-if="selectedId" :items="moveToFolderItems" :ui="{ content: 'w-52' }">
+              <UButton icon="i-lucide-folder" variant="ghost" color="neutral" size="xs">
+                <span
+                  v-if="selectedFolderId !== null"
+                  class="inline-block w-2 h-2 rounded-sm"
+                  :style="{ backgroundColor: folderDotColor(activeFolder?.color) }"
+                />
+                {{ selectedFolderId !== null ? (activeFolder?.name ?? 'Папка') : 'Без папки' }}
+              </UButton>
+            </UDropdownMenu>
+            <UButton
+              v-if="selectedId"
+              icon="i-lucide-star"
+              :color="isFavorite(form.doc_id) ? 'warning' : 'neutral'"
+              :variant="isFavorite(form.doc_id) ? 'soft' : 'ghost'"
+              size="xs"
+              :title="isFavorite(form.doc_id) ? 'Прибрати з обраних' : 'Додати в обрані'"
+              @click="toggleFavorite(form.doc_id)"
+            />
+            <div class="ml-auto">
+              <UButton
+                v-if="selectedId"
+                icon="i-lucide-trash-2"
+                variant="ghost"
+                color="error"
+                size="xs"
+                title="Видалити"
+                @click="deleteDoc"
+              />
+            </div>
+          </div>
+
           <div class="space-y-4">
-            <UFormField label="Ідентифікатор (doc_id)">
-              <UInput v-model="form.doc_id" class="w-full" />
-            </UFormField>
-
-            <UFormField label="Найменування юридичної особи">
-              <UInput v-model="form.org_name" class="w-full" />
-            </UFormField>
-
             <div class="grid grid-cols-2 gap-4">
               <UFormField label="Тип суб'єкта">
                 <USelect
@@ -1484,9 +1581,6 @@ onMounted(async () => {
               <UFormField label="Вид документа">
                 <UInput v-model="form.doc_type" class="w-full" />
               </UFormField>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
               <UFormField label="Формат">
                 <USelect
                   v-model="form.fmt"
@@ -1494,7 +1588,7 @@ onMounted(async () => {
                   class="w-full"
                 />
               </UFormField>
-              <UFormField label="Реєстр. індекс" :help="autoRegister ? 'присвоюється автоматично при поданні' : 'введіть вручну'">
+              <UFormField label="Реєстр. індекс" :help="autoRegister ? 'авто при поданні' : 'введіть вручну'">
                 <UInput
                   v-model="form.reg_index"
                   :disabled="autoRegister"
@@ -1504,11 +1598,13 @@ onMounted(async () => {
               </UFormField>
             </div>
 
+            <UFormField label="Найменування організації">
+              <UInput v-model="form.org_name" class="w-full" />
+            </UFormField>
             <UFormField label="Заголовок">
               <UInput v-model="form.title" class="w-full" />
             </UFormField>
-
-            <UFormField label="Дата реєстрації" :help="autoRegister ? 'присвоюється автоматично при поданні' : 'введіть вручну'">
+            <UFormField label="Дата реєстрації" :help="autoRegister ? 'авто при поданні' : 'введіть вручну'">
               <UInput
                 v-model="form.date_text"
                 :disabled="autoRegister"
@@ -1525,10 +1621,8 @@ onMounted(async () => {
 
             <div v-if="selectedIsScanned" class="flex items-center gap-2 p-3 rounded border border-default text-sm text-muted">
               <UIcon name="i-lucide-scan-line" class="text-primary flex-shrink-0" />
-              Скан-копія: оригіналом є завантажений файл. Текст не редагується —
-              документ лише підписують КЕП.
+              Скан-копія: оригіналом є завантажений файл. Текст не редагується — документ лише підписують КЕП.
             </div>
-
             <UFormField v-else label="Текст (кожен абзац — з нового рядка)">
               <UTextarea v-model="form.body" :rows="5" class="w-full" />
             </UFormField>
@@ -1537,63 +1631,79 @@ onMounted(async () => {
               <UTextarea v-model="form.signers" :rows="3" placeholder="ПЕТРЕНКО Олександр | Директор" class="w-full" />
             </UFormField>
 
-            <div class="flex gap-2 flex-wrap">
-              <UButton v-if="!selectedIsScanned" icon="i-lucide-save" @click="createDoc">
+            <div v-if="!selectedIsScanned" class="flex gap-2">
+              <UButton icon="i-lucide-save" @click="createDoc">
                 Зберегти картку
-              </UButton>
-              <UButton v-if="!selectedIsScanned" variant="outline" icon="i-lucide-cog" :loading="generating" @click="generateDoc">
-                Згенерувати + валідація
-              </UButton>
-              <UButton variant="outline" icon="i-lucide-eye" @click="() => openViewer()">
-                Переглянути
-              </UButton>
-              <UButton variant="outline" icon="i-lucide-download" @click="downloadDoc">
-                Завантажити
-              </UButton>
-              <UButton variant="outline" color="error" icon="i-lucide-trash-2" @click="deleteDoc">
-                Видалити
               </UButton>
             </div>
           </div>
         </UCard>
 
-        <!-- 2. ВАЛІДАЦІЯ -->
-        <UCard>
+        <!-- КРОК 2 · Перевірка -->
+        <UCard id="sec-validation">
           <template #header>
             <div class="flex items-center gap-2 font-semibold">
               <UIcon name="i-lucide-clipboard-check" />
-              2. Відповідність ДСТУ 4163 + НПА
+              Перевірка документа
             </div>
           </template>
 
-          <div v-if="!report" class="text-muted text-sm">
-            Згенеруйте документ для перевірки.
+          <div v-if="!report" class="flex items-center justify-between gap-3">
+            <span class="text-muted text-sm">Документ ще не перевірено за ДСТУ 4163 + НПА.</span>
+            <UButton variant="outline" icon="i-lucide-cog" :loading="generating" @click="generateDoc">
+              Згенерувати + перевірити
+            </UButton>
           </div>
           <div v-else>
-            <div class="flex items-center gap-2 mb-3">
-              <UIcon
-                :name="report.compliant ? 'i-lucide-check-circle' : 'i-lucide-alert-circle'"
-                :class="report.compliant ? 'text-success' : 'text-warning'"
-              />
-              <span class="font-medium">
-                {{ report.compliant ? 'ВІДПОВІДАЄ' : 'Є зауваження' }} правил: {{ report.rules_passed }}
-              </span>
+            <div class="flex items-center justify-between gap-3 mb-3">
+              <div class="flex items-center gap-2">
+                <UIcon
+                  :name="report.compliant ? 'i-lucide-circle-check' : 'i-lucide-triangle-alert'"
+                  :class="report.compliant ? 'text-success' : 'text-warning'"
+                  class="text-lg"
+                />
+                <span class="font-medium">
+                  {{ report.compliant ? 'Помилок не знайдено' : `Знайдено зауважень: ${report.findings?.length ?? 0}` }}
+                </span>
+              </div>
+              <UButton
+                variant="ghost"
+                color="neutral"
+                size="xs"
+                icon="i-lucide-refresh-cw"
+                :loading="generating"
+                @click="generateDoc"
+              >
+                Перевірити знову
+              </UButton>
             </div>
-            <div v-if="report.findings?.length" class="space-y-1">
+
+            <UButton
+              v-if="report.findings?.length"
+              :icon="showFindings ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+              variant="ghost"
+              color="neutral"
+              size="xs"
+              class="mb-2"
+              @click="showFindings = !showFindings"
+            >
+              {{ showFindings ? 'Сховати зауваження' : 'Переглянути зауваження' }}
+            </UButton>
+            <div v-if="showFindings && report.findings?.length" class="space-y-1 mb-2">
               <div
                 v-for="f in report.findings"
                 :key="f.rule"
                 class="flex gap-2 text-sm p-2 rounded bg-error/10 text-error"
               >
-                <UIcon name="i-lucide-x-circle" class="flex-shrink-0 mt-0.5" />
+                <UIcon name="i-lucide-circle-x" class="flex-shrink-0 mt-0.5" />
                 <span><strong>{{ f.rule }}</strong>: {{ f.message }}</span>
               </div>
             </div>
-            <!-- PDF/A -->
-            <div v-if="pdfaInfo" class="mt-3 p-3 rounded border border-default text-sm">
+
+            <div v-if="pdfaInfo" class="mt-2 p-3 rounded border border-default text-sm">
               <div class="flex items-center gap-2 font-medium mb-1">
                 <UIcon
-                  :name="pdfaInfo.conforms ? 'i-lucide-check-circle' : 'i-lucide-alert-triangle'"
+                  :name="pdfaInfo.conforms ? 'i-lucide-circle-check' : 'i-lucide-triangle-alert'"
                   :class="pdfaInfo.conforms ? 'text-success' : 'text-warning'"
                 />
                 PDF/A-3: {{ pdfaInfo.conforms ? 'відповідає (ISO 19005-3:2012)' : 'є зауваження' }}
@@ -1605,134 +1715,174 @@ onMounted(async () => {
           </div>
         </UCard>
 
-        <!-- 3. ЧЕРГА -->
-        <UCard>
+        <!-- КРОК 3 · Підписання (черга + КЕП) -->
+        <UCard id="sec-signing">
           <template #header>
             <div class="flex items-center gap-2 font-semibold">
-              <UIcon name="i-lucide-list-checks" />
-              3. Черга підписання / погодження
+              <UIcon name="i-lucide-pen-tool" />
+              Підписання
+              <span v-if="signerList.length" class="ml-auto text-xs font-normal text-muted">
+                {{ signerList.filter(s => s.status === 'signed').length }}/{{ signerList.length }} підписано
+              </span>
             </div>
           </template>
 
-          <div class="flex gap-2 mb-4">
-            <UButton icon="i-lucide-send" :loading="submitting" @click="submitDoc">
-              Подати у чергу
-            </UButton>
-            <UButton
-              variant="outline"
-              icon="i-lucide-archive"
-              :disabled="signerList.length === 0"
-              @click="downloadAsice"
-            >
-              Завантажити ASiC-E
-            </UButton>
-            <span v-if="docStatus" class="text-sm text-muted self-center">
-              статус: {{ docStatus }}
-            </span>
-          </div>
+          <div class="space-y-5">
+            <!-- Черга підписання → timeline -->
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-3">
+                <span class="text-sm font-medium">Черга підписання</span>
+                <UButton
+                  v-if="docStatus === 'draft' || !signerList.length"
+                  icon="i-lucide-send"
+                  :loading="submitting"
+                  size="sm"
+                  @click="submitDoc"
+                >
+                  Подати у чергу
+                </UButton>
+              </div>
+              <div v-if="signerList.length === 0" class="text-muted text-sm">
+                Збережіть картку й подайте у чергу.
+              </div>
+              <UTimeline v-else :items="signerTimeline" />
+            </div>
 
-          <div v-if="signerList.length === 0" class="text-muted text-sm">
-            Збережіть картку.
-          </div>
-          <div v-else class="space-y-2">
-            <div
-              v-for="(s, i) in signerList"
-              :key="i"
-              class="flex items-center gap-3 p-3 rounded border border-default"
-            >
-              <UBadge
-                :label="s.status === 'signed' ? 'підписано' : s.status === 'rejected' ? 'відхилено' : 'очікує'"
-                :color="s.status === 'signed' ? 'success' : s.status === 'rejected' ? 'error' : 'neutral'"
-                variant="subtle"
-              />
+            <USeparator />
+
+            <!-- КЕП — кроки підпису -->
+            <div class="space-y-4">
+              <div class="text-sm" :class="euReady ? 'text-success' : 'text-muted'">
+                {{ euStatus }}
+              </div>
+
+              <!-- (a) Спосіб підпису — сегмент-контрол -->
               <div>
-                <div class="text-sm font-medium">#{{ i + 1 }} {{ s.name }}</div>
-                <div class="text-xs text-muted">{{ s.position }}</div>
+                <div class="text-xs text-muted mb-1.5">Спосіб підпису</div>
+                <div class="flex gap-2">
+                  <UButton
+                    :variant="keySource === 'file' ? 'soft' : 'outline'"
+                    :color="keySource === 'file' ? 'primary' : 'neutral'"
+                    icon="i-lucide-file-key"
+                    size="sm"
+                    class="flex-1 justify-center"
+                    @click="keySource = 'file'"
+                  >
+                    Файловий ключ
+                  </UButton>
+                  <UButton
+                    :variant="keySource === 'token' ? 'soft' : 'outline'"
+                    :color="keySource === 'token' ? 'primary' : 'neutral'"
+                    icon="i-lucide-usb"
+                    size="sm"
+                    class="flex-1 justify-center"
+                    @click="() => { keySource = 'token'; initWidget() }"
+                  >
+                    Апаратний токен
+                  </UButton>
+                </div>
+              </div>
+
+              <!-- (b) токен-виджет ІІТ -->
+              <div v-if="keySource === 'token'" class="p-3 rounded border border-default">
+                <div class="text-sm text-muted mb-2">Підпис апаратним токеном через офіційний віджет ІІТ.</div>
+                <div id="sign-widget-parent" class="w-full h-[620px] border border-default rounded overflow-hidden" />
+              </div>
+
+              <!-- (b') файловий ключ: дропзона + КНЕДП -->
+              <template v-else>
+                <UFormField v-if="caList.length" label="Кваліфікований надавач (КНЕДП)">
+                  <USelect
+                    v-model="caIndex"
+                    :items="caList.map((c, i) => ({ label: c.title, value: i }))"
+                    class="w-full"
+                  />
+                </UFormField>
+                <FileDropZone
+                  accept=".dat,.pfx,.jks,.p12,.zs2"
+                  hint="Файл ключа (.dat / .pfx / .jks)"
+                  :file-name="keyFile?.name"
+                  @file="onKeyFile"
+                />
+              </template>
+
+              <UFormField label="Пароль захисту ключа">
+                <UInput v-model="keyPass" type="password" placeholder="••••••" class="w-full" />
+              </UFormField>
+
+              <div v-if="signStep" class="text-xs text-muted flex items-center gap-2">
+                <UIcon name="i-lucide-loader-circle" class="animate-spin" />
+                {{
+                  signStep === 'manifest' ? 'Формування даних для підпису…' :
+                  signStep === 'key' ? 'Зчитування ключа…' :
+                  signStep === 'sign' ? 'Накладання КЕП (ДСТУ 4145)…' :
+                  signStep === 'send' ? 'Передавання підпису на сервер…' : signStep
+                }}
+              </div>
+
+              <!-- (c) SINGLE PRIMARY -->
+              <UButton
+                icon="i-lucide-pen-tool"
+                color="success"
+                size="lg"
+                block
+                :loading="signing"
+                :disabled="(!euReady && keySource === 'file') || signerList.every(s => s.status !== 'pending')"
+                @click="signCurrent"
+              >
+                Підписати документ
+              </UButton>
+
+              <!-- спрощений текст + «Детальніше» -->
+              <div class="text-xs text-muted flex items-start gap-2">
+                <UIcon name="i-lucide-lock" class="flex-shrink-0 mt-0.5 text-success" />
+                <div>
+                  Ваш ключ використовується лише для підпису та не передається на сервер.
+                  <UButton
+                    variant="ghost"
+                    color="neutral"
+                    size="xs"
+                    class="ml-1 px-1"
+                    @click="showLegalDetails = !showLegalDetails"
+                  >
+                    Детальніше
+                  </UButton>
+                  <div v-if="showLegalDetails" class="mt-1 text-muted/80">
+                    Приватний ключ не покидає браузер (Закон 2155-VIII). Для апаратних токенів потрібне встановлене «ІІТ Користувач ЦСК».
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </UCard>
 
-        <!-- 4. КЕП -->
-        <UCard>
+        <!-- КРОК 4 · Відправлення (ASiC-E) -->
+        <UCard id="sec-delivery">
           <template #header>
             <div class="flex items-center gap-2 font-semibold">
-              <UIcon name="i-lucide-key" />
-              4. Підпис КЕП (на клієнті)
+              <UIcon name="i-lucide-send" />
+              Відправлення
             </div>
           </template>
 
-          <div class="space-y-4">
-            <div class="text-sm" :class="euReady ? 'text-success' : 'text-muted'">
-              {{ euStatus }}
+          <div v-if="docStatus === 'signed'" class="flex flex-col items-center text-center py-4 gap-3">
+            <UIcon name="i-lucide-circle-check" class="text-success text-4xl" />
+            <div>
+              <div class="font-medium">Документ підписано</div>
+              <div class="text-xs text-muted">Підписаний ASiC-E контейнер готовий до доставки / архівування.</div>
             </div>
-
-            <UFormField label="Спосіб зчитування ключа">
-              <USelect
-                v-model="keySource"
-                :items="[
-                  { label: 'Файловий ключ (.dat / .pfx / .jks)', value: 'file' },
-                  { label: 'Апаратний токен (е.Ключ, Алмаз, ID-картка…)', value: 'token' }
-                ]"
-                class="w-full"
-                @update:model-value="(v) => { if (v === 'token') initWidget() }"
-              />
-            </UFormField>
-
-            <div v-if="keySource === 'token'" class="text-sm text-muted p-3 rounded border border-default space-y-2">
-              <div>Підпис апаратним токеном через офіційний віджет ІІТ.</div>
-              <div id="sign-widget-parent" class="mt-2 w-full h-[620px] border border-default rounded overflow-hidden" />
-            </div>
-
-            <template v-else>
-              <UFormField v-if="caList.length" label="Кваліфікований надавач (КНЕДП)">
-                <USelect
-                  v-model="caIndex"
-                  :items="caList.map((c, i) => ({ label: c.title, value: i }))"
-                  class="w-full"
-                />
-              </UFormField>
-
-              <UFormField label="Файл особистого ключа (.dat / .pfx / .jks)">
-                <input
-                  type="file"
-                  accept=".dat,.pfx,.jks,.p12,.zs2"
-                  class="text-sm"
-                  @change="(e: Event) => { const f = (e.target as HTMLInputElement).files; if (euSignFactory && f?.length) euSignFactory.setPrivateKeyFile(f[0]); keyFile = f?.[0] ?? null }"
-                >
-              </UFormField>
-            </template>
-
-            <UFormField label="Пароль захисту ключа">
-              <UInput v-model="keyPass" type="password" placeholder="••••••" class="w-full" />
-            </UFormField>
-
-            <div v-if="signStep" class="text-xs text-muted flex items-center gap-2">
-              <UIcon name="i-lucide-loader-circle" class="animate-spin" />
-              {{
-                signStep === 'manifest' ? 'Формування даних для підпису…' :
-                signStep === 'key' ? 'Зчитування ключа…' :
-                signStep === 'sign' ? 'Накладання КЕП (ДСТУ 4145)…' :
-                signStep === 'send' ? 'Передавання підпису на сервер…' : signStep
-              }}
-            </div>
-
             <div class="flex gap-2">
-              <UButton
-                icon="i-lucide-pen-tool"
-                color="success"
-                :loading="signing"
-                :disabled="(!euReady && keySource === 'file') || signerList.every(s => s.status !== 'pending')"
-                @click="signCurrent"
-              >
-                Підписати поточним у черзі
+              <UButton icon="i-lucide-archive" @click="downloadAsice">
+                Завантажити ASiC-E
+              </UButton>
+              <UButton variant="outline" icon="i-lucide-eye" @click="() => openViewer()">
+                Переглянути
               </UButton>
             </div>
-
-            <div class="text-xs text-muted p-3 rounded border border-default">
-              Приватний ключ не покидає браузер (Закон 2155-VIII).
-              Для апаратних токенів потрібне встановлене «ІІТ Користувач ЦСК».
-            </div>
+          </div>
+          <div v-else class="flex items-center gap-2 text-muted text-sm">
+            <UIcon name="i-lucide-lock" />
+            Стане доступним після підписання документа.
           </div>
         </UCard>
       </div>
@@ -1805,12 +1955,12 @@ onMounted(async () => {
           </p>
 
           <UFormField label="Файл скану (PDF / JPEG / PNG / TIFF)">
-            <input
-              type="file"
+            <FileDropZone
               accept=".pdf,.jpg,.jpeg,.png,.tif,.tiff,.bmp,.webp,application/pdf,image/*"
-              class="text-sm w-full"
-              @change="(e: Event) => scanFile = (e.target as HTMLInputElement).files?.[0] ?? null"
-            >
+              hint="Перетягніть скан сюди"
+              :file-name="scanFile?.name"
+              @file="(f) => scanFile = f"
+            />
           </UFormField>
 
           <UFormField label="Назва документа">
