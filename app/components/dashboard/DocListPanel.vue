@@ -41,6 +41,16 @@ const store = useDashboard()
       />
       <span class="text-xs text-muted flex-1">обрано: {{ store.selectedForDelete.value.size }}</span>
       <UButton
+        icon="i-lucide-send"
+        color="primary"
+        variant="soft"
+        size="xs"
+        :disabled="store.selectedForDelete.value.size === 0"
+        @click="store.openBulkDelivery(Array.from(store.selectedForDelete.value))"
+      >
+        Пошта
+      </UButton>
+      <UButton
         icon="i-lucide-trash-2"
         color="error"
         variant="soft"

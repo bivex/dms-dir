@@ -65,5 +65,6 @@ onMounted(async () => {
     <DashboardFolderModal />
     <DashboardArchiveExportModal />
     <DashboardCounterpartyModal />
+    <DashboardBulkDeliveryModal />
   </div>
 </template>

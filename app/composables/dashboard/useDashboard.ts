@@ -77,7 +77,7 @@ export function createDashboardStore() {
 
   const archiveExport = useArchiveExport()
   const counterparties = useCounterparties({ apiFetch })
-  const delivery = useDelivery({ apiFetch })
+  const delivery = useDelivery({ apiFetch, docs })
 
   // поточна папка відкритого документа (мітка в заголовку картки)
   const selectedFolderId = computed<number | null>(() => {
@@ -259,7 +259,15 @@ export function createDashboardStore() {
     fetchDeliveryDetails: delivery.fetchDeliveryDetails,
     addDeliveryItem: delivery.addItem,
     removeDeliveryItem: delivery.removeItem,
-    triggerDeliveryExport: delivery.triggerDeliveryExport
+    triggerDeliveryExport: delivery.triggerDeliveryExport,
+    bulkModalOpen: delivery.bulkModalOpen,
+    bulkLoading: delivery.bulkLoading,
+    bulkExporting: delivery.bulkExporting,
+    bulkDeliveries: delivery.bulkDeliveries,
+    openBulkDelivery: delivery.openBulkDelivery,
+    addBulkItem: delivery.addBulkItem,
+    removeBulkItem: delivery.removeBulkItem,
+    triggerBulkDeliveryExport: delivery.triggerBulkDeliveryExport
   }
 }
 
