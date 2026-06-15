@@ -78,10 +78,8 @@ watch(() => store.form.doc_id, (newId) => {
               Отримувач
             </span>
             <USelect
-              :items="[
-                { label: 'Обрати з контрагентів...', value: '' },
-                ...store.counterparties.value.map(c => ({ label: `${c.name} (${c.code})`, value: String(c.id) }))
-              ]"
+              placeholder="Обрати з контрагентів..."
+              :items="store.counterparties.value.map(c => ({ label: `${c.name} (${c.code})`, value: String(c.id) }))"
               class="w-48 text-xs"
               @update:model-value="onSelectCounterparty"
             />
