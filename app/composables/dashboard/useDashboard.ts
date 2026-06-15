@@ -16,6 +16,7 @@ import { useJournals } from './useJournals'
 import { useApprovals } from './useApprovals'
 import { useTasks } from './useTasks'
 import { useUsers } from './useUsers'
+import { useProcesses } from './useProcesses'
 import { onMounted } from 'vue'
 
 /**
@@ -86,6 +87,7 @@ export function createDashboardStore() {
 
   const journals = useJournals({ apiFetch })
   const users = useUsers({ apiFetch })
+  const processes = useProcesses({ apiFetch })
   const approvals = useApprovals({
     apiFetch,
     refreshAll: () => documents.refreshAll(),
@@ -311,6 +313,18 @@ export function createDashboardStore() {
     openEditUser: users.openEditUser,
     saveUser: users.saveUser,
     deleteUser: users.deleteUser,
+    // processes
+    processes: processes.processes,
+    processesLoaded: processes.processesLoaded,
+    selectedProcessId: processes.selectedProcessId,
+    selectedProcess: processes.selectedProcess,
+    savingProcess: processes.savingProcess,
+    reloadProcesses: processes.reloadProcesses,
+    selectProcess: processes.selectProcess,
+    createProcess: processes.createProcess,
+    duplicateProcess: processes.duplicateProcess,
+    saveProcess: processes.saveProcess,
+    deleteProcess: processes.deleteProcess,
     // approvals
     approvalSubmitting: approvals.approvalSubmitting,
     approvalActing: approvals.approvalActing,

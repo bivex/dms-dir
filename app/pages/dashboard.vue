@@ -27,7 +27,7 @@ onMounted(async () => {
   <div class="flex h-screen overflow-hidden bg-background">
     <DashboardSidebar />
 
-    <DashboardDocListPanel v-if="store.activeCategory.value !== 'counterparties' && store.activeCategory.value !== 'tasks' && store.activeCategory.value !== 'users'" />
+    <DashboardDocListPanel v-if="store.activeCategory.value !== 'counterparties' && store.activeCategory.value !== 'tasks' && store.activeCategory.value !== 'users' && store.activeCategory.value !== 'processes'" />
 
     <!-- ГОЛОВНА ОБЛАСТЬ -->
     <div class="flex-1 overflow-y-auto">
@@ -36,6 +36,9 @@ onMounted(async () => {
 
       <!-- КОРИСТУВАЧІ -->
       <DashboardUsersView v-else-if="store.activeCategory.value === 'users'" />
+
+      <!-- ПРОЦЕСИ -->
+      <DashboardProcessesView v-else-if="store.activeCategory.value === 'processes'" />
 
       <!-- ЗАВДАННЯ -->
       <DashboardTasksView v-else-if="store.activeCategory.value === 'tasks'" />
