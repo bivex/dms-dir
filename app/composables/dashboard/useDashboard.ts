@@ -9,6 +9,7 @@ import { useCalendar } from './useCalendar'
 import { useDocViewer } from './useDocViewer'
 import { useScanUpload } from './useScanUpload'
 import { useEuSign } from './useEuSign'
+import { useArchiveExport } from './useArchiveExport'
 
 /**
  * Склейка всіх composables дашборду в один store + provide/inject-обвʼязка.
@@ -71,6 +72,8 @@ export function createDashboardStore() {
     selectDoc: documents.selectDoc,
     refreshAll: documents.refreshAll
   })
+
+  const archiveExport = useArchiveExport()
 
   // поточна папка відкритого документа (мітка в заголовку картки)
   const selectedFolderId = computed<number | null>(() => {
@@ -219,7 +222,15 @@ export function createDashboardStore() {
     signCurrent: euSign.signCurrent,
     initWidget: euSign.initWidget,
     onKeyFile: euSign.onKeyFile,
-    bootstrapEuSign: euSign.bootstrap
+    bootstrapEuSign: euSign.bootstrap,
+    // archive export
+    exportModalOpen: archiveExport.exportModalOpen,
+    exporting: archiveExport.exporting,
+    periodType: archiveExport.periodType,
+    startDate: archiveExport.startDate,
+    endDate: archiveExport.endDate,
+    openExportModal: archiveExport.openExportModal,
+    triggerDownload: archiveExport.triggerDownload
   }
 }
 

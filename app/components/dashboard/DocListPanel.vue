@@ -21,6 +21,14 @@ const store = useDashboard()
           @click="store.toggleSelectMode()"
         />
         <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" @click="store.refreshAll()" />
+        <UButton
+          icon="i-lucide-folder-archive"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          title="Вивантажити архів"
+          @click="store.openExportModal()"
+        />
       </div>
     </div>
 
