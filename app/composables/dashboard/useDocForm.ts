@@ -1,5 +1,5 @@
 import type { StepperItem, TimelineItem } from '@nuxt/ui'
-import type { DocForm, PdfaInfo, SignerEntry, ApproverEntry, ValidationReport, UiColor } from './types'
+import type { DocForm, PdfaInfo, SignerEntry, ApproverEntry, ApproverUser, ValidationReport, UiColor } from './types'
 
 /**
  * Стан картки документа + валідація + черга підписання (без самої логіки
@@ -23,7 +23,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     signers: '',
     journal_id: null,
     approval_type: 'sequential',
-    approvers: ''
+    approverUsers: [] as ApproverUser[]
   })
 
   // авто-реєстрація: індекс і дата присвоюються бекендом при поданні у чергу.
@@ -106,10 +106,12 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       const [full_name, position] = line.split('|').map(s => s.trim())
       return { full_name: full_name ?? line.trim(), position: position ?? '', order_index: i }
     })
-    const approverLines = form.approvers ? form.approvers.split('\n').filter(Boolean).map((line, i) => {
-      const [full_name, position] = line.split('|').map(s => s.trim())
-      return { full_name: full_name ?? line.trim(), position: position ?? '', order_index: i }
-    }) : []
+    const approvers = form.approverUsers.map((u, i) => ({
+      order_index: i,
+      user_id: u.user_id,
+      full_name: u.full_name,
+      position: u.position
+    }))
     return {
       doc_id: form.doc_id,
       org_name: form.org_name,
@@ -123,7 +125,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       signers: signerLines,
       journal_id: form.journal_id ? Number(form.journal_id) : null,
       approval_type: form.approval_type,
-      approvers: approverLines
+      approvers: approvers
     }
   }
 
@@ -136,7 +138,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     form.signers = ''
     form.journal_id = null
     form.approval_type = 'sequential'
-    form.approvers = ''
+    form.approverUsers = []
     report.value = null
     pdfaInfo.value = null
     docStatus.value = ''
@@ -154,7 +156,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     is_scanned?: boolean
     journal_id?: number | null
     approval_type?: string | null
-    approvers?: Array<{ order_index: number; full_name: string; position: string; status: string; comment?: string | null; approved_at?: string | null }>
+    approvers?: Array<{ order_index: number; user_id?: number | null; full_name: string; position: string; status: string; comment?: string | null; approved_at?: string | null }>
   }) {
     form.doc_id = full.doc_id
     form.title = full.title
@@ -163,7 +165,11 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     form.signers = full.signers.map(s => `${s.full_name} | ${s.position}`).join('\n')
     form.journal_id = full.journal_id ?? null
     form.approval_type = (full.approval_type as any) ?? 'sequential'
-    form.approvers = full.approvers ? full.approvers.map(a => `${a.full_name} | ${a.position}`).join('\n') : ''
+    form.approverUsers = full.approvers
+      ? full.approvers
+          .filter(a => (a as any).user_id)
+          .map(a => ({ user_id: (a as any).user_id as number, full_name: a.full_name, position: a.position }))
+      : []
     
     const cj = (full as Record<string, unknown>).content_json as Record<string, unknown> | undefined
     if (cj) {
@@ -186,6 +192,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     }))
     approverList.value = full.approvers ? full.approvers.map(a => ({
       order_index: a.order_index,
+      user_id: (a as any).user_id ?? null,
       full_name: a.full_name,
       position: a.position,
       status: a.status as any,

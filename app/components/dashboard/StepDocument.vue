@@ -50,7 +50,28 @@ function getSubjectTypeColor(type: string) {
 
 onMounted(() => {
   store.reloadCounterparties()
+  store.reloadUsers()
 })
+
+const availableUsers = computed(() =>
+  store.users.value
+    .filter((u: any) => !form.approverUsers.some(a => a.user_id === u.id))
+    .map((u: any) => ({
+      label: `${u.name}${u.position ? ' — ' + u.position : ''} · ${u.email}`,
+      value: u.id
+    }))
+)
+
+function addApprover(userId: number | string) {
+  const id = Number(userId)
+  const u = store.users.value.find((x: any) => x.id === id)
+  if (!u || form.approverUsers.some(a => a.user_id === id)) return
+  form.approverUsers.push({ user_id: id, full_name: u.name, position: u.position })
+}
+
+function removeApprover(index: number) {
+  form.approverUsers.splice(index, 1)
+}
 </script>
 
 <template>
@@ -234,8 +255,38 @@ onMounted(() => {
         <UTextarea v-model="form.body" :rows="5" class="w-full" />
       </UFormField>
 
-      <UFormField label="Погоджувачі (ПІБ | посада, по рядку)">
-        <UTextarea v-model="form.approvers" :rows="3" placeholder="КОНДРАТЕНКО Юлія | Юрист" class="w-full" />
+      <UFormField label="Погоджувачі (із користувачів системи)">
+        <div class="space-y-2 w-full">
+          <USelect
+            :model-value="undefined"
+            :items="availableUsers"
+            placeholder="Оберіть користувача для додавання…"
+            class="w-full"
+            @update:model-value="addApprover"
+          />
+          <div v-if="form.approverUsers.length" class="space-y-1">
+            <div
+              v-for="(a, i) in form.approverUsers"
+              :key="a.user_id"
+              class="flex items-center gap-2 p-2 rounded border border-default bg-default/5 text-sm"
+            >
+              <span class="text-muted font-mono text-xs w-5 flex-shrink-0">{{ i + 1 }}.</span>
+              <div class="flex-1 min-w-0">
+                <div class="font-medium truncate">{{ a.full_name }}</div>
+                <div class="text-xs text-muted truncate">{{ a.position || 'Посада не вказана' }}</div>
+              </div>
+              <UButton
+                icon="i-lucide-x"
+                size="xs"
+                color="error"
+                variant="ghost"
+                title="Прибрати"
+                @click="removeApprover(i)"
+              />
+            </div>
+          </div>
+          <div v-else class="text-xs text-muted">Погоджувачів не додано.</div>
+        </div>
       </UFormField>
 
       <UFormField label="Підписанти (ПІБ | посада, по рядку)">

@@ -15,6 +15,7 @@ import { useDelivery } from './useDelivery'
 import { useJournals } from './useJournals'
 import { useApprovals } from './useApprovals'
 import { useTasks } from './useTasks'
+import { useUsers } from './useUsers'
 import { onMounted } from 'vue'
 
 /**
@@ -84,6 +85,7 @@ export function createDashboardStore() {
   const delivery = useDelivery({ apiFetch, docs })
 
   const journals = useJournals({ apiFetch })
+  const users = useUsers({ apiFetch })
   const approvals = useApprovals({
     apiFetch,
     refreshAll: () => documents.refreshAll(),
@@ -293,6 +295,10 @@ export function createDashboardStore() {
     journalsLoading: journals.journalsLoading,
     fetchJournals: journals.fetchJournals,
     createJournal: journals.createJournal,
+    // users
+    users: users.users,
+    usersLoaded: users.usersLoaded,
+    reloadUsers: users.reloadUsers,
     // approvals
     approvalSubmitting: approvals.approvalSubmitting,
     approvalActing: approvals.approvalActing,

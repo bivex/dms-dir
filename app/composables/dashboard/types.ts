@@ -41,11 +41,27 @@ export interface SignerEntry {
 
 export interface ApproverEntry {
   order_index: number
+  user_id?: number | null
   full_name: string
   position: string
   status: 'waiting' | 'invited' | 'approved' | 'rejected'
   comment?: string | null
   approved_at?: string | null
+}
+
+/** Обраний у формі погоджувач — посилання на реального користувача системи. */
+export interface ApproverUser {
+  user_id: number
+  full_name: string
+  position: string
+}
+
+/** Користувач системи (для вибору погоджувачів/підписантів). */
+export interface UserEntry {
+  id: number
+  name: string
+  email: string
+  position: string
 }
 
 /** Реактивна форма картки документа. */
@@ -62,7 +78,7 @@ export type DocForm = {
   signers: string
   journal_id?: number | null
   approval_type?: 'sequential' | 'parallel'
-  approvers?: string
+  approverUsers: ApproverUser[]
 }
 
 export interface CounterpartyEntry {
