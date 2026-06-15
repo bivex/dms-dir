@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { DropdownMenuItem } from '@nuxt/ui'
+
 definePageMeta({
   middleware: 'auth',
   layout: 'dashboard'
@@ -17,6 +19,21 @@ const docs = ref<DocEntry[]>([])
 const selectedId = ref<string | null>(null)
 const activeCategory = ref<string>('all')
 const searchQuery = ref('')
+
+// --- папки-категорії ---
+// activeFolderId має зміст лише коли activeCategory === 'folder':
+//   null  → фільтр «Без папки» (документи поза папками)
+//   <id>  → документи конкретної папки
+const folders = ref<FolderEntry[]>([])
+const activeFolderId = ref<number | null>(null)
+
+// модалка створення/перейменування папки
+const folderModalOpen = ref(false)
+const folderModalMode = ref<'create' | 'rename'>('create')
+const folderEditId = ref<number | null>(null)
+const folderName = ref('')
+const folderColor = ref<string>('primary')
+const folderSaving = ref(false)
 
 // --- оцифрування: заливка скану ---
 const scanModalOpen = ref(false)
@@ -58,7 +75,7 @@ async function uploadScan() {
     const doc = await res.json()
     toast.add({ title: 'Скан оцифровано', description: `${doc.doc_id} — готовий до підпису`, color: 'success' })
     scanModalOpen.value = false
-    await reloadDocs()
+    await refreshAll()
     await selectDoc({ doc_id: doc.doc_id } as DocEntry)
   }
   catch (e: unknown) {
@@ -219,6 +236,15 @@ interface DocEntry {
   created_at: string
   registered_at?: string | null
   archived?: boolean
+  folder_id?: number | null
+}
+
+interface FolderEntry {
+  id: number
+  name: string
+  color?: string | null
+  position: number
+  doc_count?: number
 }
 
 interface ValidationReport {
@@ -244,6 +270,10 @@ const selectedDoc = computed(() => docs.value.find(d => d.doc_id === selectedId.
 // лічильники категорій
 const archivedCount = computed(() => docs.value.filter(d => d.archived).length)
 const activeCount = computed(() => docs.value.filter(d => !d.archived).length)
+// документи поза папками (незаархівовані) — для пункту «Без папки»
+const noFolderCount = computed(() =>
+  docs.value.filter(d => !d.archived && (d.folder_id ?? null) === null).length
+)
 
 const filteredDocs = computed(() => {
   let list = docs.value
@@ -256,6 +286,10 @@ const filteredDocs = computed(() => {
   if (activeCategory.value === 'favorites') return list.filter(d => favorites.value.has(d.doc_id) && !d.archived)
   if (activeCategory.value === 'archive') return list.filter(d => d.archived)
   if (activeCategory.value === 'trash') return list.filter(d => d.status === 'deleted')
+  if (activeCategory.value === 'folder') {
+    // папка — лише незаархівовані документи з відповідним folder_id
+    return list.filter(d => !d.archived && (d.folder_id ?? null) === activeFolderId.value)
+  }
   if (activeCategory.value === 'calendar') {
     list = list.filter(d => !d.archived)
     // якщо обрано день — лишаємо документи саме цього дня
@@ -264,6 +298,19 @@ const filteredDocs = computed(() => {
   }
   // звичайні категорії ховають архівовані документи
   return list.filter(d => !d.archived)
+})
+
+// заголовок списку залежно від активного фільтра
+const activeFolder = computed(() => folders.value.find(f => f.id === activeFolderId.value) ?? null)
+const listHeaderLabel = computed(() => {
+  if (activeCategory.value === 'folder') {
+    return activeFolder.value?.name ?? 'Без папки'
+  }
+  if (activeCategory.value === 'favorites') return 'Обрані'
+  if (activeCategory.value === 'archive') return 'Архів'
+  if (activeCategory.value === 'trash') return 'Кошик'
+  if (activeCategory.value === 'calendar') return selectedDay.value ? selectedDayLabel.value : 'Календар'
+  return 'Всі документи'
 })
 
 // ====================== КАЛЕНДАР ДОКУМЕНТІВ ======================
@@ -399,6 +446,11 @@ async function reloadDocs() {
   }
 }
 
+// свіже і списки документів, і лічильники папок — після операцій, що їх змінюють
+async function refreshAll() {
+  await Promise.all([reloadDocs(), reloadFolders()])
+}
+
 // --- завантажити повні дані документа ---
 async function selectDoc(doc: DocEntry) {
   selectedId.value = doc.doc_id
@@ -492,7 +544,7 @@ async function createDoc() {
       body: buildPayload()
     })
     toast.add({ title: 'Картку збережено' })
-    await reloadDocs()
+    await refreshAll()
     selectedId.value = form.doc_id
   }
   catch (e: unknown) {
@@ -534,8 +586,8 @@ async function generateDoc() {
         .filter(x => !x.conforms)
         .flatMap(x => x.findings.map(f => ({ rule: x.rule_id, message: f.message })))
     }
-    pdfaInfo.value = res.pdfa
-    await reloadDocs()
+    pdfaInfo.value = res.pdfa ? { conforms: res.pdfa.conforms, findings: res.pdfa.issues } : null
+    await refreshAll()
     toast.add({ title: r.conforms ? 'Документ відповідає ДСТУ' : 'Є зауваження', color: r.conforms ? 'success' : 'warning' })
   }
   catch (e: unknown) {
@@ -571,7 +623,7 @@ async function deleteDoc() {
       persistFavorites()
     }
     selectedId.value = null
-    await reloadDocs()
+    await refreshAll()
   }
   catch (e: unknown) {
     toast.add({ title: 'Помилка видалення', description: String(e), color: 'error' })
@@ -643,7 +695,7 @@ async function archiveDoc(docId: string) {
     await apiFetch(`/documents/${docId}/archive`, { method: 'POST' })
     toast.add({ title: 'Переміщено в архів' })
     if (selectedId.value === docId) selectedId.value = null
-    await reloadDocs()
+    await refreshAll()
   }
   catch (e: unknown) {
     toast.add({ title: 'Помилка архівування', description: String(e), color: 'error' })
@@ -654,12 +706,175 @@ async function unarchiveDoc(docId: string) {
   try {
     await apiFetch(`/documents/${docId}/unarchive`, { method: 'POST' })
     toast.add({ title: 'Відновлено з архіву' })
-    await reloadDocs()
+    await refreshAll()
   }
   catch (e: unknown) {
     toast.add({ title: 'Помилка відновлення', description: String(e), color: 'error' })
   }
 }
+
+// ====================== ПАПКИ-КАТЕГОРІЇ ======================
+// Палітра кольорів папок: назва Nuxt UI → hex для крапки-індикатора.
+const FOLDER_COLORS = [
+  { id: 'primary', hex: '#6366f1' },
+  { id: 'success', hex: '#22c55e' },
+  { id: 'warning', hex: '#f59e0b' },
+  { id: 'error', hex: '#ef4444' },
+  { id: 'info', hex: '#3b82f6' },
+  { id: 'neutral', hex: '#71717a' }
+]
+const FOLDER_COLOR_HEX: Record<string, string> = Object.fromEntries(
+  FOLDER_COLORS.map(c => [c.id, c.hex])
+)
+
+function folderDotColor(c?: string | null): string {
+  if (!c) return '#71717a'
+  if (c.startsWith('#')) return c
+  return FOLDER_COLOR_HEX[c] ?? '#6366f1'
+}
+
+async function reloadFolders() {
+  try {
+    const res = await apiFetch<{ folders: FolderEntry[] }>('/folders')
+    folders.value = res.folders ?? []
+    // якщо активну папку видалили з іншого місця — скидаємо фільтр
+    if (activeCategory.value === 'folder'
+      && activeFolderId.value !== null
+      && !folders.value.some(f => f.id === activeFolderId.value)) {
+      activeCategory.value = 'all'
+    }
+  }
+  catch {
+    // не блокуємо роботу — папки не критичні для списку
+  }
+}
+
+function openCreateFolder() {
+  folderModalMode.value = 'create'
+  folderEditId.value = null
+  folderName.value = ''
+  folderColor.value = 'primary'
+  folderModalOpen.value = true
+}
+
+function openRenameFolder(folder: FolderEntry) {
+  folderModalMode.value = 'rename'
+  folderEditId.value = folder.id
+  folderName.value = folder.name
+  folderColor.value = folder.color || 'primary'
+  folderModalOpen.value = true
+}
+
+async function saveFolder() {
+  const name = folderName.value.trim()
+  if (!name) {
+    toast.add({ title: 'Введіть назву папки', color: 'warning' })
+    return
+  }
+  folderSaving.value = true
+  try {
+    if (folderModalMode.value === 'create') {
+      await apiFetch('/folders', { method: 'POST', body: { name, color: folderColor.value } })
+      toast.add({ title: 'Папку створено' })
+    }
+    else if (folderEditId.value !== null) {
+      await apiFetch(`/folders/${folderEditId.value}`, {
+        method: 'PUT',
+        body: { name, color: folderColor.value }
+      })
+      toast.add({ title: 'Папку оновлено' })
+    }
+    folderModalOpen.value = false
+    await reloadFolders()
+  }
+  catch (e: unknown) {
+    toast.add({ title: 'Помилка збереження папки', description: String(e), color: 'error' })
+  }
+  finally {
+    folderSaving.value = false
+  }
+}
+
+async function deleteFolder(folder: FolderEntry) {
+  // eslint-disable-next-line no-alert
+  if (!confirm(`Видалити папку «${folder.name}»? Документи залишаться — вони перейдуть у «Без папки».`)) return
+  try {
+    await apiFetch(`/folders/${folder.id}`, { method: 'DELETE' })
+    toast.add({ title: 'Папку видалено' })
+    // локально прибираємо folder_id у документах цієї папки
+    for (const d of docs.value) {
+      if (d.folder_id === folder.id) d.folder_id = null
+    }
+    if (activeCategory.value === 'folder' && activeFolderId.value === folder.id) {
+      activeCategory.value = 'all'
+    }
+    await reloadFolders()
+  }
+  catch (e: unknown) {
+    toast.add({ title: 'Помилка видалення папки', description: String(e), color: 'error' })
+  }
+}
+
+async function moveDocToFolder(docId: string, folderId: number | null) {
+  try {
+    await apiFetch(`/documents/${docId}/folder`, {
+      method: 'POST',
+      body: { folder_id: folderId }
+    })
+    // оптимістично оновлюємо локальний стан
+    const d = docs.value.find(x => x.doc_id === docId)
+    if (d) d.folder_id = folderId
+    await reloadFolders()
+    toast.add({
+      title: folderId === null ? 'Документ прибрано з папки' : 'Документ переміщено у папку',
+      color: 'success'
+    })
+  }
+  catch (e: unknown) {
+    toast.add({ title: 'Помилка переміщення', description: String(e), color: 'error' })
+  }
+}
+
+// вибір папки у сайдбарі — папки й «розділи» взаємовиключні
+function selectFolder(folderId: number | null) {
+  activeCategory.value = 'folder'
+  activeFolderId.value = folderId
+  selectedId.value = null
+}
+
+// меню дій над конкретною папкою (rename / delete)
+function folderMenuItems(folder: FolderEntry): DropdownMenuItem[][] {
+  return [[
+    { label: 'Перейменувати', icon: 'i-lucide-pencil', onSelect: () => openRenameFolder(folder) }
+  ], [
+    { label: 'Видалити', icon: 'i-lucide-trash-2', color: 'error', onSelect: () => deleteFolder(folder) }
+  ]]
+}
+
+// поточна папка відкритого документа (для мітки в заголовку картки)
+const selectedFolderId = computed<number | null>(() => {
+  if (!selectedId.value) return null
+  return docs.value.find(d => d.doc_id === selectedId.value)?.folder_id ?? null
+})
+
+// меню «перемістити у папку» для поточного документа
+const moveToFolderItems = computed<DropdownMenuItem[][]>(() => [
+  [
+    {
+      label: 'Без папки',
+      icon: 'i-lucide-folder-x',
+      onSelect: () => moveDocToFolder(form.doc_id, null)
+    }
+  ],
+  folders.value.map(f => ({
+    label: f.name,
+    icon: 'i-lucide-folder',
+    color: (f.color && !f.color.startsWith('#'))
+      ? (f.color as DropdownMenuItem['color'])
+      : undefined,
+    onSelect: () => moveDocToFolder(form.doc_id, f.id)
+  }))
+])
 
 // --- подати у чергу ---
 async function submitDoc() {
@@ -766,7 +981,7 @@ async function signCurrent() {
     signStep.value = ''
     toast.add({ title: `Підписано: ${next.name}`, color: 'success' })
     await selectDoc({ doc_id: form.doc_id } as DocEntry)
-    await reloadDocs()
+    await refreshAll()
   }
   catch (e: unknown) {
     signStep.value = ''
@@ -826,7 +1041,7 @@ function buildPayload() {
 // ініціалізація
 onMounted(async () => {
   loadFavorites()
-  await reloadDocs()
+  await refreshAll()
   // завантажуємо eusign.js (EndUser widget helper) динамічно
   await new Promise<void>((resolve) => {
     if ((window as unknown as { EndUser?: unknown }).EndUser) { resolve(); return }
@@ -918,6 +1133,75 @@ onMounted(async () => {
           <UBadge v-else-if="cat.id === 'favorites' && favorites.size" :label="String(favorites.size)" color="warning" variant="subtle" size="xs" class="ml-auto" />
           <UBadge v-else-if="cat.id === 'archive' && archivedCount" :label="String(archivedCount)" variant="subtle" size="xs" class="ml-auto" />
         </UButton>
+
+        <!-- ПАПКИ-КАТЕГОРІЇ -->
+        <div class="flex items-center justify-between px-2 py-1 mt-3">
+          <span class="text-xs font-medium text-muted uppercase">Папки</span>
+          <UButton
+            icon="i-lucide-plus"
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            title="Створити папку"
+            @click="openCreateFolder"
+          />
+        </div>
+
+        <!-- Без папки (документи поза папками) -->
+        <UButton
+          block
+          variant="ghost"
+          :color="activeCategory === 'folder' && activeFolderId === null ? 'primary' : 'neutral'"
+          icon="i-lucide-folder-x"
+          class="justify-start mb-0.5"
+          @click="selectFolder(null)"
+        >
+          Без папки
+          <UBadge v-if="noFolderCount" :label="String(noFolderCount)" variant="subtle" size="xs" class="ml-auto" />
+        </UButton>
+
+        <!-- Користувацькі папки -->
+        <div
+          v-for="f in folders"
+          :key="f.id"
+          class="group flex items-center mb-0.5"
+        >
+          <UButton
+            variant="ghost"
+            :color="activeCategory === 'folder' && activeFolderId === f.id ? 'primary' : 'neutral'"
+            class="justify-start flex-1 min-w-0"
+            :title="f.name"
+            @click="selectFolder(f.id)"
+          >
+            <span
+              class="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0"
+              :style="{ backgroundColor: folderDotColor(f.color) }"
+            />
+            <span class="truncate flex-1 text-left">{{ f.name }}</span>
+            <UBadge
+              v-if="f.doc_count"
+              :label="String(f.doc_count)"
+              variant="subtle"
+              size="xs"
+              class="ml-auto"
+            />
+          </UButton>
+          <UDropdownMenu :items="folderMenuItems(f)" :ui="{ content: 'w-44' }">
+            <UButton
+              icon="i-lucide-ellipsis-vertical"
+              variant="ghost"
+              color="neutral"
+              size="xs"
+              class="flex-shrink-0 opacity-0 group-hover:opacity-100"
+              title="Дії з папкою"
+              @click.stop
+            />
+          </UDropdownMenu>
+        </div>
+
+        <div v-if="folders.length === 0" class="px-2 py-1 text-xs text-muted">
+          Папок ще немає
+        </div>
       </nav>
 
       <div class="p-3 border-t border-default">
@@ -933,7 +1217,10 @@ onMounted(async () => {
     <!-- СПИСОК -->
     <div class="w-72 flex-shrink-0 border-r border-default flex flex-col">
       <div class="p-3 border-b border-default flex items-center justify-between">
-        <span class="font-medium text-sm">{{ filteredDocs.length }} документів</span>
+        <div class="min-w-0">
+          <div class="font-medium text-sm truncate">{{ listHeaderLabel }}</div>
+          <div class="text-xs text-muted">{{ filteredDocs.length }} документів</div>
+        </div>
         <div class="flex items-center gap-1">
           <UButton
             :icon="selectMode ? 'i-lucide-x' : 'i-lucide-list-checks'"
@@ -943,7 +1230,7 @@ onMounted(async () => {
             :title="selectMode ? 'Вийти з режиму вибору' : 'Вибрати для видалення'"
             @click="toggleSelectMode"
           />
-          <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" @click="reloadDocs" />
+          <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" @click="refreshAll" />
         </div>
       </div>
 
@@ -983,7 +1270,15 @@ onMounted(async () => {
             @click.stop
           />
           <div class="min-w-0 flex-1">
-            <div class="text-sm font-medium truncate">{{ doc.title || '(без заголовка)' }}</div>
+            <div class="text-sm font-medium truncate flex items-center gap-1.5">
+              <span
+                v-if="doc.folder_id"
+                class="inline-block w-2 h-2 rounded-sm flex-shrink-0"
+                :style="{ backgroundColor: folderDotColor(folders.find(x => x.id === doc.folder_id)?.color) }"
+                :title="folders.find(x => x.id === doc.folder_id)?.name"
+              />
+              <span class="truncate">{{ doc.title || '(без заголовка)' }}</span>
+            </div>
             <div class="text-xs text-muted mt-0.5 flex items-center gap-2">
               <span>{{ doc.doc_id }}</span>
               <UBadge
@@ -1130,13 +1425,33 @@ onMounted(async () => {
             <div class="flex items-center gap-2 font-semibold">
               <UIcon name="i-lucide-edit" />
               1. Картка документа
+              <UDropdownMenu
+                v-if="selectedId"
+                :items="moveToFolderItems"
+                :ui="{ content: 'w-52' }"
+              >
+                <UButton
+                  icon="i-lucide-folder"
+                  variant="ghost"
+                  color="neutral"
+                  size="xs"
+                  class="ml-auto"
+                  title="Перемістити у папку"
+                >
+                  <span
+                    v-if="selectedFolderId !== null"
+                    class="inline-block w-2 h-2 rounded-sm"
+                    :style="{ backgroundColor: folderDotColor(activeFolder?.color) }"
+                  />
+                  {{ selectedFolderId !== null ? (activeFolder?.name ?? 'Папка') : 'Без папки' }}
+                </UButton>
+              </UDropdownMenu>
               <UButton
                 v-if="selectedId"
                 icon="i-lucide-star"
                 :color="isFavorite(form.doc_id) ? 'warning' : 'neutral'"
                 :variant="isFavorite(form.doc_id) ? 'soft' : 'ghost'"
                 size="xs"
-                class="ml-auto"
                 :title="isFavorite(form.doc_id) ? 'Прибрати з обраних' : 'Додати в обрані'"
                 @click="toggleFavorite(form.doc_id)"
               >
@@ -1229,7 +1544,7 @@ onMounted(async () => {
               <UButton v-if="!selectedIsScanned" variant="outline" icon="i-lucide-cog" :loading="generating" @click="generateDoc">
                 Згенерувати + валідація
               </UButton>
-              <UButton variant="outline" icon="i-lucide-eye" @click="openViewer">
+              <UButton variant="outline" icon="i-lucide-eye" @click="() => openViewer()">
                 Переглянути
               </UButton>
               <UButton variant="outline" icon="i-lucide-download" @click="downloadDoc">
@@ -1383,7 +1698,7 @@ onMounted(async () => {
                   type="file"
                   accept=".dat,.pfx,.jks,.p12,.zs2"
                   class="text-sm"
-                  @change="(e) => { const f = (e.target as HTMLInputElement).files; if (euSignFactory && f?.length) euSignFactory.setPrivateKeyFile(f[0]); keyFile = f?.[0] ?? null }"
+                  @change="(e: Event) => { const f = (e.target as HTMLInputElement).files; if (euSignFactory && f?.length) euSignFactory.setPrivateKeyFile(f[0]); keyFile = f?.[0] ?? null }"
                 >
               </UFormField>
             </template>
@@ -1494,7 +1809,7 @@ onMounted(async () => {
               type="file"
               accept=".pdf,.jpg,.jpeg,.png,.tif,.tiff,.bmp,.webp,application/pdf,image/*"
               class="text-sm w-full"
-              @change="(e) => scanFile = (e.target as HTMLInputElement).files?.[0] ?? null"
+              @change="(e: Event) => scanFile = (e.target as HTMLInputElement).files?.[0] ?? null"
             >
           </UFormField>
 
@@ -1522,6 +1837,57 @@ onMounted(async () => {
               @click="uploadScan"
             >
               Оцифрувати
+            </UButton>
+          </div>
+        </div>
+      </template>
+    </UModal>
+
+    <!-- СТВОРЕННЯ / ПЕРЕЙМЕНУВАННЯ ПАПКИ -->
+    <UModal v-model:open="folderModalOpen" :ui="{ content: 'max-w-sm w-full' }">
+      <template #content>
+        <div class="p-5 space-y-4">
+          <div class="flex items-center gap-2 font-semibold">
+            <UIcon name="i-lucide-folder-plus" class="text-primary" />
+            {{ folderModalMode === 'create' ? 'Нова папка' : 'Перейменувати папку' }}
+          </div>
+
+          <UFormField label="Назва папки">
+            <UInput
+              v-model="folderName"
+              placeholder="напр. Фінанси"
+              class="w-full"
+              autofocus
+              @keydown.enter="saveFolder"
+            />
+          </UFormField>
+
+          <UFormField label="Колір">
+            <div class="flex items-center gap-2">
+              <button
+                v-for="c in FOLDER_COLORS"
+                :key="c.id"
+                type="button"
+                class="w-6 h-6 rounded-full border-2 transition-transform"
+                :class="folderColor === c.id ? 'border-default scale-110 ring-2 ring-primary/40' : 'border-transparent'"
+                :style="{ backgroundColor: c.hex }"
+                :title="c.id"
+                @click="folderColor = c.id"
+              />
+            </div>
+          </UFormField>
+
+          <div class="flex gap-2 justify-end">
+            <UButton variant="ghost" color="neutral" @click="folderModalOpen = false">
+              Скасувати
+            </UButton>
+            <UButton
+              icon="i-lucide-check"
+              :loading="folderSaving"
+              :disabled="!folderName.trim()"
+              @click="saveFolder"
+            >
+              {{ folderModalMode === 'create' ? 'Створити' : 'Зберегти' }}
             </UButton>
           </div>
         </div>
