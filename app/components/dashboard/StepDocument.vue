@@ -3,6 +3,47 @@ import { useDashboard } from '~/composables/dashboard/useDashboard'
 
 const store = useDashboard()
 const { form } = store
+
+const isFocused = ref(false)
+
+function onBlur() {
+  setTimeout(() => {
+    isFocused.value = false
+  }, 200)
+}
+
+const filteredOptions = computed(() => {
+  if (!store.counterparties.value) return []
+  const q = form.org_name?.toLowerCase().trim() || ''
+  if (!q) return store.counterparties.value
+  return store.counterparties.value.filter(c =>
+    c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)
+  )
+})
+
+function selectCounterparty(c: any) {
+  form.org_name = c.name
+  form.subject_type = c.subject_type
+  isFocused.value = false
+}
+
+function getSubjectTypeLabel(type: string) {
+  if (type === 'legal') return 'Юр. особа'
+  if (type === 'fop') return 'ФОП'
+  if (type === 'person') return 'Фіз. особа'
+  return type
+}
+
+function getSubjectTypeColor(type: string) {
+  if (type === 'legal') return 'primary'
+  if (type === 'fop') return 'warning'
+  if (type === 'person') return 'success'
+  return 'neutral'
+}
+
+onMounted(() => {
+  store.reloadCounterparties()
+})
 </script>
 
 <template>
@@ -104,7 +145,38 @@ const { form } = store
       </div>
 
       <UFormField label="Найменування організації">
-        <UInput v-model="form.org_name" class="w-full" />
+        <div class="relative w-full">
+          <UInput
+            v-model="form.org_name"
+            placeholder="Введіть або оберіть контрагента..."
+            class="w-full"
+            @focus="isFocused = true"
+            @blur="onBlur"
+          />
+          <div
+            v-if="isFocused && filteredOptions.length > 0"
+            class="absolute z-50 w-full mt-1 bg-background border border-default rounded-md shadow-lg max-h-60 overflow-y-auto"
+          >
+            <div
+              v-for="c in filteredOptions"
+              :key="c.id"
+              class="p-2.5 hover:bg-elevated cursor-pointer transition-colors flex items-center justify-between text-xs border-b border-default/30 last:border-0"
+              @mousedown="selectCounterparty(c)"
+            >
+              <div>
+                <div class="font-medium text-default">{{ c.name }}</div>
+                <div class="text-[10px] text-muted font-mono mt-0.5">Код: {{ c.code }}</div>
+              </div>
+              <UBadge
+                :label="getSubjectTypeLabel(c.subject_type)"
+                :color="getSubjectTypeColor(c.subject_type)"
+                variant="subtle"
+                size="xs"
+                class="ml-2 flex-shrink-0"
+              />
+            </div>
+          </div>
+        </div>
       </UFormField>
       <UFormField label="Заголовок">
         <UInput v-model="form.title" class="w-full" />

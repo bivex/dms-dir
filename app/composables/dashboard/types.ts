@@ -53,4 +53,15 @@ export type DocForm = {
   signers: string
 }
 
+export interface CounterpartyEntry {
+  id: number
+  name: string
+  code: string
+  subject_type: 'legal' | 'fop' | 'person'
+  email?: string | null
+  phone?: string | null
+  address?: string | null
+  created_at?: string | null
+}
+
 export type UiColor = 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral'

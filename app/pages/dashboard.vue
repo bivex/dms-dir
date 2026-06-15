@@ -26,12 +26,15 @@ onMounted(async () => {
   <div class="flex h-screen overflow-hidden bg-background">
     <DashboardSidebar />
 
-    <DashboardDocListPanel />
+    <DashboardDocListPanel v-if="store.activeCategory.value !== 'counterparties'" />
 
     <!-- ГОЛОВНА ОБЛАСТЬ -->
     <div class="flex-1 overflow-y-auto">
+      <!-- КОНТРАГЕНТИ -->
+      <DashboardCounterpartiesView v-if="store.activeCategory.value === 'counterparties'" />
+
       <!-- КАЛЕНДАР ДОКУМЕНТІВ -->
-      <DashboardCalendarView v-if="store.activeCategory.value === 'calendar' && !store.selectedId.value" />
+      <DashboardCalendarView v-else-if="store.activeCategory.value === 'calendar' && !store.selectedId.value" />
 
       <div v-else-if="!store.selectedId.value && !store.creatingDoc.value" class="flex items-center justify-center h-full">
         <div class="text-center text-muted">
@@ -61,5 +64,6 @@ onMounted(async () => {
     <DashboardScanUploadModal />
     <DashboardFolderModal />
     <DashboardArchiveExportModal />
+    <DashboardCounterpartyModal />
   </div>
 </template>

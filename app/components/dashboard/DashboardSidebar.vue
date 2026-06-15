@@ -3,6 +3,18 @@ import { useDashboard } from '~/composables/dashboard/useDashboard'
 
 const store = useDashboard()
 const { logout } = useAuth()
+
+function handleCategoryClick(catId: string) {
+  if (catId === 'calendar') {
+    store.openCalendar()
+  } else {
+    store.activeCategory.value = catId
+    if (catId === 'counterparties') {
+      store.selectedId.value = null
+      store.creatingDoc.value = false
+    }
+  }
+}
 </script>
 
 <template>
@@ -42,7 +54,8 @@ const { logout } = useAuth()
           { id: 'all', label: 'Всі документи', icon: 'i-lucide-files' },
           { id: 'calendar', label: 'Календар', icon: 'i-lucide-calendar-days' },
           { id: 'favorites', label: 'Обрані', icon: 'i-lucide-star' },
-          { id: 'archive', label: 'Архів', icon: 'i-lucide-archive' }
+          { id: 'archive', label: 'Архів', icon: 'i-lucide-archive' },
+          { id: 'counterparties', label: 'Контрагенти', icon: 'i-lucide-users' }
         ]"
         :key="cat.id"
         block
@@ -50,7 +63,7 @@ const { logout } = useAuth()
         :color="store.activeCategory.value === cat.id ? 'primary' : 'neutral'"
         :icon="cat.icon"
         class="justify-start mb-0.5"
-        @click="cat.id === 'calendar' ? store.openCalendar() : (store.activeCategory.value = cat.id)"
+        @click="handleCategoryClick(cat.id)"
       >
         {{ cat.label }}
         <UBadge v-if="cat.id === 'all'" :label="String(store.activeCount.value)" variant="subtle" size="xs" class="ml-auto" />
