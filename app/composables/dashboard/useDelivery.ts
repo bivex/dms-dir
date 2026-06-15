@@ -61,7 +61,24 @@ export function useDelivery(deps: {
   const bulkModalOpen = ref(false)
   const bulkLoading = ref(false)
   const bulkExporting = ref(false)
-  const bulkDeliveries = ref<BulkDeliveryEntry[]>([])
+  const bulkDocIds = ref<string[]>([])
+
+  const bulkSender = reactive({
+    name: '',
+    address: '',
+    phone: '',
+    code: ''
+  })
+
+  const bulkRecipient = reactive({
+    name: '',
+    address: '',
+    phone: '',
+    code: '',
+    subject_type: 'legal'
+  })
+
+  const bulkItems = ref<DeliveryItem[]>([])
 
   async function fetchDeliveryDetails(docId: string) {
     loading.value = true
@@ -150,31 +167,38 @@ export function useDelivery(deps: {
       return
     }
 
-    bulkDeliveries.value = []
+    bulkDocIds.value = docIds
+    bulkItems.value = []
     bulkLoading.value = true
     bulkModalOpen.value = true
 
     try {
       const promises = docIds.map(async (docId) => {
-        const docInfo = docs.value.find(d => d.doc_id === docId)
-        const docTitle = docInfo?.title || `Документ ${docId}`
-
         const res = await apiFetch<{
-          sender: BulkDeliveryEntry['sender']
-          recipient: BulkDeliveryEntry['recipient']
+          sender: typeof sender
+          recipient: typeof recipient
           items: DeliveryItem[]
         }>(`/documents/${docId}/delivery`)
-
-        return {
-          doc_id: docId,
-          title: docTitle,
-          sender: res.sender,
-          recipient: res.recipient,
-          items: res.items || []
-        }
+        return res
       })
 
-      bulkDeliveries.value = await Promise.all(promises)
+      const results = await Promise.all(promises)
+
+      // Use first document's details as default sender/recipient
+      const firstResult = results[0]
+      if (firstResult) {
+        Object.assign(bulkSender, firstResult.sender)
+        Object.assign(bulkRecipient, firstResult.recipient)
+      }
+
+      // Merge all items into one single array
+      const mergedItems: DeliveryItem[] = []
+      for (const res of results) {
+        if (res.items && res.items.length > 0) {
+          mergedItems.push(...res.items)
+        }
+      }
+      bulkItems.value = mergedItems
     }
     catch (e: unknown) {
       toast.add({ title: 'Помилка завантаження даних для відправки', description: String(e), color: 'error' })
@@ -185,45 +209,38 @@ export function useDelivery(deps: {
     }
   }
 
-  function addBulkItem(entryIdx: number) {
-    const entry = bulkDeliveries.value[entryIdx]
-    if (entry) {
-      entry.items.push({
-        name: '',
-        quantity: 1,
-        declared_value: 1.0
-      })
-    }
+  function addBulkItem() {
+    bulkItems.value.push({
+      name: '',
+      quantity: 1,
+      declared_value: 1.0
+    })
   }
 
-  function removeBulkItem(entryIdx: number, itemIdx: number) {
-    const entry = bulkDeliveries.value[entryIdx]
-    if (entry) {
-      entry.items.splice(itemIdx, 1)
-    }
+  function removeBulkItem(itemIdx: number) {
+    bulkItems.value.splice(itemIdx, 1)
   }
 
   async function triggerBulkDeliveryExport() {
-    // Validate items
-    for (const entry of bulkDeliveries.value) {
-      if (entry.items.some(item => !item.name.trim())) {
-        toast.add({ title: `Заповніть найменування всіх предметів для документа ${entry.doc_id}`, color: 'warning' })
-        return
-      }
+    if (bulkItems.value.some(item => !item.name.trim())) {
+      toast.add({ title: 'Заповніть найменування всіх предметів', color: 'warning' })
+      return
     }
 
     bulkExporting.value = true
     try {
       const token = useAuth().token.value
       const payload = {
-        deliveries: bulkDeliveries.value.map(d => ({
-          doc_id: d.doc_id,
-          sender: d.sender,
-          recipient: d.recipient,
-          items: d.items,
-          generate_f107: generateF107.value,
-          generate_label: generateLabel.value
-        }))
+        deliveries: [
+          {
+            doc_id: bulkDocIds.value[0] || 'bulk',
+            sender: bulkSender,
+            recipient: bulkRecipient,
+            items: bulkItems.value,
+            generate_f107: generateF107.value,
+            generate_label: generateLabel.value
+          }
+        ]
       }
 
       const response = await fetch(`${useRuntimeConfig().public.apiBase}/documents/delivery/export-bulk`, {
@@ -274,10 +291,14 @@ export function useDelivery(deps: {
     bulkModalOpen,
     bulkLoading,
     bulkExporting,
-    bulkDeliveries,
+    bulkSender,
+    bulkRecipient,
+    bulkItems,
+    bulkDocIds,
     openBulkDelivery,
     addBulkItem,
     removeBulkItem,
     triggerBulkDeliveryExport
   }
 }
+
