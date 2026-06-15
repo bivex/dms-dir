@@ -9,12 +9,15 @@ function handleCategoryClick(catId: string) {
     store.openCalendar()
   } else {
     store.activeCategory.value = catId
-    if (catId === 'counterparties' || catId === 'approvals') {
+    if (catId === 'counterparties' || catId === 'approvals' || catId === 'tasks') {
       store.selectedId.value = null
       store.creatingDoc.value = false
     }
     if (catId === 'approvals') {
       store.fetchMyApprovals()
+    }
+    if (catId === 'tasks') {
+      store.fetchMyTasks()
     }
   }
 }

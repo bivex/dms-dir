@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useDashboard } from '~/composables/dashboard/useDashboard'
 
 const store = useDashboard()
+
+onMounted(() => {
+  store.fetchMyTasks()
+})
 
 const activeTab = ref<'active' | 'completed'>('active')
 
