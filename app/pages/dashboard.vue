@@ -185,6 +185,9 @@ function isFavorite(docId: string): boolean {
 }
 
 // --- стан картки ---
+// creatingDoc — користувач натиснув «Додати документ» і заповнює нову картку
+// (відрізняє «новий документ» від порожнього плейсхолдера, де form.title порожній).
+const creatingDoc = ref(false)
 const form = reactive({
   doc_id: `DOC-${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}`,
   org_name: 'ДЕРЖАВНЕ ПІДПРИЄМСТВО «УКРНДНЦ»',
@@ -521,6 +524,7 @@ async function refreshAll() {
 // --- завантажити повні дані документа ---
 async function selectDoc(doc: DocEntry) {
   selectedId.value = doc.doc_id
+  creatingDoc.value = false
   report.value = null
   pdfaInfo.value = null
   try {
@@ -591,6 +595,7 @@ async function selectDoc(doc: DocEntry) {
 // --- новий документ ---
 function newDocument() {
   selectedId.value = null
+  creatingDoc.value = true
   form.doc_id = `DOC-${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}`
   form.title = ''
   form.reg_index = ''
@@ -690,6 +695,7 @@ async function deleteDoc() {
       persistFavorites()
     }
     selectedId.value = null
+    creatingDoc.value = false
     await refreshAll()
   }
   catch (e: unknown) {
@@ -1484,7 +1490,7 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div v-else-if="!selectedId && !form.title" class="flex items-center justify-center h-full">
+      <div v-else-if="!selectedId && !creatingDoc" class="flex items-center justify-center h-full">
         <div class="text-center text-muted">
           <UIcon name="i-lucide-file-text" class="text-5xl mb-3 opacity-30" />
           <div>Оберіть документ або створіть новий</div>
