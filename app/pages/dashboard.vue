@@ -27,12 +27,15 @@ onMounted(async () => {
   <div class="flex h-screen overflow-hidden bg-background">
     <DashboardSidebar />
 
-    <DashboardDocListPanel v-if="store.activeCategory.value !== 'counterparties' && store.activeCategory.value !== 'tasks'" />
+    <DashboardDocListPanel v-if="store.activeCategory.value !== 'counterparties' && store.activeCategory.value !== 'tasks' && store.activeCategory.value !== 'users'" />
 
     <!-- ГОЛОВНА ОБЛАСТЬ -->
     <div class="flex-1 overflow-y-auto">
       <!-- КОНТРАГЕНТИ -->
       <DashboardCounterpartiesView v-if="store.activeCategory.value === 'counterparties'" />
+
+      <!-- КОРИСТУВАЧІ -->
+      <DashboardUsersView v-else-if="store.activeCategory.value === 'users'" />
 
       <!-- ЗАВДАННЯ -->
       <DashboardTasksView v-else-if="store.activeCategory.value === 'tasks'" />
@@ -74,6 +77,7 @@ onMounted(async () => {
     <DashboardFolderModal />
     <DashboardArchiveExportModal />
     <DashboardCounterpartyModal />
+    <DashboardUserModal />
     <DashboardBulkDeliveryModal />
   </div>
 </template>

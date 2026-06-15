@@ -9,7 +9,7 @@ function handleCategoryClick(catId: string) {
     store.openCalendar()
   } else {
     store.activeCategory.value = catId
-    if (catId === 'counterparties' || catId === 'approvals' || catId === 'tasks') {
+    if (catId === 'counterparties' || catId === 'approvals' || catId === 'tasks' || catId === 'users') {
       store.selectedId.value = null
       store.creatingDoc.value = false
     }
@@ -18,6 +18,9 @@ function handleCategoryClick(catId: string) {
     }
     if (catId === 'tasks') {
       store.fetchMyTasks()
+    }
+    if (catId === 'users') {
+      store.reloadUsers()
     }
   }
 }
@@ -63,7 +66,8 @@ function handleCategoryClick(catId: string) {
           { id: 'calendar', label: 'Календар', icon: 'i-lucide-calendar-days' },
           { id: 'favorites', label: 'Обрані', icon: 'i-lucide-star' },
           { id: 'archive', label: 'Архів', icon: 'i-lucide-archive' },
-          { id: 'counterparties', label: 'Контрагенти', icon: 'i-lucide-users' }
+          { id: 'counterparties', label: 'Контрагенти', icon: 'i-lucide-users' },
+          { id: 'users', label: 'Користувачі', icon: 'i-lucide-user-cog' }
         ]"
         :key="cat.id"
         block
