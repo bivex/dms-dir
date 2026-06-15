@@ -1,5 +1,5 @@
 import type { StepperItem, TimelineItem } from '@nuxt/ui'
-import type { DocForm, PdfaInfo, SignerEntry, ValidationReport, UiColor } from './types'
+import type { DocForm, PdfaInfo, SignerEntry, ApproverEntry, ValidationReport, UiColor } from './types'
 
 /**
  * Стан картки документа + валідація + черга підписання (без самої логіки
@@ -20,7 +20,10 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     date_text: '',
     reg_index: '',
     body: '',
-    signers: ''
+    signers: '',
+    journal_id: null,
+    approval_type: 'sequential',
+    approvers: ''
   })
 
   // авто-реєстрація: індекс і дата присвоюються бекендом при поданні у чергу.
@@ -31,6 +34,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
   const docStatus = ref<string>('')
   const selectedIsScanned = ref(false)
   const signerList = ref<SignerEntry[]>([])
+  const approverList = ref<ApproverEntry[]>([])
   const generating = ref(false)
   const submitting = ref(false)
 
@@ -42,14 +46,16 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
   const stepperItems = computed<StepperItem[]>(() => [
     { title: 'Документ', description: 'картка та реквізити', icon: 'i-lucide-file-text', value: 'document' },
     { title: 'Перевірка', description: 'ДСТУ 4163 + НПА', icon: 'i-lucide-clipboard-check', value: 'validation' },
+    { title: 'Погодження', description: 'візування та лист', icon: 'i-lucide-users', value: 'approval' },
     { title: 'Підписання', description: 'черга та КЕП', icon: 'i-lucide-pen-tool', value: 'signing' },
     { title: 'Відправлення', description: 'ASiC-E контейнер', icon: 'i-lucide-send', value: 'delivery' }
   ])
 
   const activeStepIndex = computed(() => {
     const st = docStatus.value
-    if (st === 'signed') return 3
-    if (signerList.value.length > 0 || st === 'pending_signatures' || st === 'pending') return 2
+    if (st === 'signed') return 4
+    if (signerList.value.length > 0 || st === 'pending_signatures' || st === 'rejected') return 3
+    if (st === 'pending_approval') return 2
     if (report.value || st === 'generated') return 1
     return 0
   })
@@ -58,6 +64,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     const st = docStatus.value
     if (st === 'signed') return { label: 'Підписано', color: 'success', icon: 'i-lucide-circle-check' }
     if (st === 'pending_signatures' || st === 'pending') return { label: 'Очікує підпису', color: 'warning', icon: 'i-lucide-clock' }
+    if (st === 'pending_approval') return { label: 'На погодженні', color: 'warning', icon: 'i-lucide-users' }
     if (st === 'rejected') return { label: 'Помилка підпису', color: 'error', icon: 'i-lucide-circle-alert' }
     if (creatingDoc.value === false && report.value && !report.value.compliant) {
       return { label: 'Є зауваження', color: 'warning', icon: 'i-lucide-triangle-alert' }
@@ -83,7 +90,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     }))
   )
 
-  const STEP_SECTION_IDS = ['sec-document', 'sec-validation', 'sec-signing', 'sec-delivery']
+  const STEP_SECTION_IDS = ['sec-document', 'sec-validation', 'sec-approval', 'sec-signing', 'sec-delivery']
   function scrollToStep(v: string | number | undefined) {
     const idx = typeof v === 'number' ? v : Number(v)
     if (Number.isNaN(idx)) return
@@ -99,6 +106,10 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       const [full_name, position] = line.split('|').map(s => s.trim())
       return { full_name: full_name ?? line.trim(), position: position ?? '', order_index: i }
     })
+    const approverLines = form.approvers ? form.approvers.split('\n').filter(Boolean).map((line, i) => {
+      const [full_name, position] = line.split('|').map(s => s.trim())
+      return { full_name: full_name ?? line.trim(), position: position ?? '', order_index: i }
+    }) : []
     return {
       doc_id: form.doc_id,
       org_name: form.org_name,
@@ -109,7 +120,10 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       date_text: form.date_text,
       reg_index: form.reg_index,
       body: form.body.split('\n').filter(Boolean),
-      signers: signerLines
+      signers: signerLines,
+      journal_id: form.journal_id ? Number(form.journal_id) : null,
+      approval_type: form.approval_type,
+      approvers: approverLines
     }
   }
 
@@ -120,10 +134,14 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     form.reg_index = ''
     form.body = ''
     form.signers = ''
+    form.journal_id = null
+    form.approval_type = 'sequential'
+    form.approvers = ''
     report.value = null
     pdfaInfo.value = null
     docStatus.value = ''
     signerList.value = []
+    approverList.value = []
   }
 
   /** Заповнити форму повними даними документа (з GET /documents/{id}). */
@@ -134,12 +152,19 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     reg_index?: string
     reg_date?: string
     is_scanned?: boolean
+    journal_id?: number | null
+    approval_type?: string | null
+    approvers?: Array<{ order_index: number; full_name: string; position: string; status: string; comment?: string | null; approved_at?: string | null }>
   }) {
     form.doc_id = full.doc_id
     form.title = full.title
     form.doc_type = full.doc_type
     form.fmt = full.fmt ?? 'pdf'
     form.signers = full.signers.map(s => `${s.full_name} | ${s.position}`).join('\n')
+    form.journal_id = full.journal_id ?? null
+    form.approval_type = (full.approval_type as any) ?? 'sequential'
+    form.approvers = full.approvers ? full.approvers.map(a => `${a.full_name} | ${a.position}`).join('\n') : ''
+    
     const cj = (full as Record<string, unknown>).content_json as Record<string, unknown> | undefined
     if (cj) {
       form.org_name = String(cj.org_name ?? form.org_name)
@@ -159,6 +184,14 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       position: s.position,
       status: s.status === 'signed' ? 'signed' : s.status === 'rejected' ? 'rejected' : 'pending'
     }))
+    approverList.value = full.approvers ? full.approvers.map(a => ({
+      order_index: a.order_index,
+      full_name: a.full_name,
+      position: a.position,
+      status: a.status as any,
+      comment: (a as any).comment,
+      approved_at: (a as any).approved_at
+    })) : []
   }
 
   async function downloadAsice() {
@@ -227,6 +260,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     docStatus,
     selectedIsScanned,
     signerList,
+    approverList,
     generating,
     submitting,
     showFindings,

@@ -6,6 +6,13 @@ const { form } = store
 
 const isFocused = ref(false)
 
+const selectedJournalId = computed({
+  get: () => form.journal_id ? String(form.journal_id) : '0',
+  set: (val: string) => {
+    form.journal_id = val && val !== '0' ? Number(val) : null
+  }
+})
+
 function onBlur() {
   setTimeout(() => {
     isFocused.value = false
@@ -144,6 +151,29 @@ onMounted(() => {
         </UFormField>
       </div>
 
+      <div class="grid grid-cols-2 gap-4">
+        <UFormField label="Реєстраційний журнал">
+          <USelect
+            v-model="selectedJournalId"
+            :items="[
+              { label: 'Без журналу', value: '0' },
+              ...store.journals.value.map(j => ({ label: `${j.name} (${j.prefix})`, value: String(j.id) }))
+            ]"
+            class="w-full"
+          />
+        </UFormField>
+        <UFormField label="Тип погодження">
+          <USelect
+            v-model="form.approval_type"
+            :items="[
+              { label: 'Послідовне погодження', value: 'sequential' },
+              { label: 'Паралельне погодження', value: 'parallel' }
+            ]"
+            class="w-full"
+          />
+        </UFormField>
+      </div>
+
       <UFormField label="Найменування організації">
         <div class="relative w-full">
           <UInput
@@ -202,6 +232,10 @@ onMounted(() => {
       </div>
       <UFormField v-else label="Текст (кожен абзац — з нового рядка)">
         <UTextarea v-model="form.body" :rows="5" class="w-full" />
+      </UFormField>
+
+      <UFormField label="Погоджувачі (ПІБ | посада, по рядку)">
+        <UTextarea v-model="form.approvers" :rows="3" placeholder="КОНДРАТЕНКО Юлія | Юрист" class="w-full" />
       </UFormField>
 
       <UFormField label="Підписанти (ПІБ | посада, по рядку)">

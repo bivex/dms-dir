@@ -12,6 +12,10 @@ import { useEuSign } from './useEuSign'
 import { useArchiveExport } from './useArchiveExport'
 import { useCounterparties } from './useCounterparties'
 import { useDelivery } from './useDelivery'
+import { useJournals } from './useJournals'
+import { useApprovals } from './useApprovals'
+import { useTasks } from './useTasks'
+import { onMounted } from 'vue'
 
 /**
  * Склейка всіх composables дашборду в один store + provide/inject-обвʼязка.
@@ -79,6 +83,18 @@ export function createDashboardStore() {
   const counterparties = useCounterparties({ apiFetch })
   const delivery = useDelivery({ apiFetch, docs })
 
+  const journals = useJournals({ apiFetch })
+  const approvals = useApprovals({
+    apiFetch,
+    refreshAll: () => documents.refreshAll(),
+    selectDoc: (docId: string) => documents.selectDoc(docId)
+  })
+  const tasks = useTasks({ apiFetch })
+
+  onMounted(() => {
+    journals.fetchJournals()
+  })
+
   // поточна папка відкритого документа (мітка в заголовку картки)
   const selectedFolderId = computed<number | null>(() => {
     if (!documents.selectedId.value) return null
@@ -127,6 +143,7 @@ export function createDashboardStore() {
     docStatus: formStore.docStatus,
     selectedIsScanned: formStore.selectedIsScanned,
     signerList: formStore.signerList,
+    approverList: formStore.approverList,
     showFindings: formStore.showFindings,
     showLegalDetails: formStore.showLegalDetails,
     stepperItems: formStore.stepperItems,
@@ -270,7 +287,31 @@ export function createDashboardStore() {
     openBulkDelivery: delivery.openBulkDelivery,
     addBulkItem: delivery.addBulkItem,
     removeBulkItem: delivery.removeBulkItem,
-    triggerBulkDeliveryExport: delivery.triggerBulkDeliveryExport
+    triggerBulkDeliveryExport: delivery.triggerBulkDeliveryExport,
+    // journals
+    journals: journals.journals,
+    journalsLoading: journals.journalsLoading,
+    fetchJournals: journals.fetchJournals,
+    createJournal: journals.createJournal,
+    // approvals
+    approvalSubmitting: approvals.approvalSubmitting,
+    approvalActing: approvals.approvalActing,
+    myApprovals: approvals.myApprovals,
+    approvalsLoading: approvals.approvalsLoading,
+    fetchMyApprovals: approvals.fetchMyApprovals,
+    submitForApproval: approvals.submitForApproval,
+    performApprovalAction: approvals.performApprovalAction,
+    downloadApprovalSheet: approvals.downloadApprovalSheet,
+    // tasks
+    myTasks: tasks.myTasks,
+    tasksLoading: tasks.tasksLoading,
+    docResolutions: tasks.docResolutions,
+    loadingResolutions: tasks.loadingResolutions,
+    savingResolution: tasks.savingResolution,
+    fetchMyTasks: tasks.fetchMyTasks,
+    updateTaskStatus: tasks.updateTaskStatus,
+    fetchDocResolutions: tasks.fetchDocResolutions,
+    addDocResolution: tasks.addDocResolution
   }
 }
 

@@ -39,6 +39,15 @@ export interface SignerEntry {
   status: 'pending' | 'signed' | 'rejected'
 }
 
+export interface ApproverEntry {
+  order_index: number
+  full_name: string
+  position: string
+  status: 'waiting' | 'invited' | 'approved' | 'rejected'
+  comment?: string | null
+  approved_at?: string | null
+}
+
 /** Реактивна форма картки документа. */
 export type DocForm = {
   doc_id: string
@@ -51,6 +60,9 @@ export type DocForm = {
   reg_index: string
   body: string
   signers: string
+  journal_id?: number | null
+  approval_type?: 'sequential' | 'parallel'
+  approvers?: string
 }
 
 export interface CounterpartyEntry {

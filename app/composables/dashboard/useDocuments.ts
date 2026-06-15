@@ -90,8 +90,9 @@ export function useDocuments(deps: {
     await Promise.all([reloadDocs(), reloadFolders()])
   }
 
-  async function selectDoc(doc: DocEntry) {
-    selectedId.value = doc.doc_id
+  async function selectDoc(doc: DocEntry | string) {
+    const docId = typeof doc === 'string' ? doc : doc.doc_id
+    selectedId.value = docId
     formStore.creatingDoc.value = false
     report.value = null
     pdfaInfo.value = null
@@ -105,7 +106,7 @@ export function useDocuments(deps: {
           results?: Array<{ rule_id: string; conforms: boolean; findings: Array<{ message: string }> }>
           findings?: Array<{ rule: string; message: string }>
         } | null
-      }>(`/documents/${doc.doc_id}`)
+      }>(`/documents/${docId}`)
       applyDocToForm(full)
 
       // для підписаних документів беремо СВІЖИЙ звіт через /validate
@@ -134,7 +135,7 @@ export function useDocuments(deps: {
       await apiFetch('/documents', { method: 'POST', body: buildPayload() })
       toast.add({ title: 'Картку збережено' })
       await refreshAll()
-      selectedId.value = form.doc_id
+      await selectDoc(form.doc_id)
     }
     catch (e: unknown) {
       toast.add({ title: 'Помилка збереження', description: String(e), color: 'error' })

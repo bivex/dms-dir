@@ -9,9 +9,12 @@ function handleCategoryClick(catId: string) {
     store.openCalendar()
   } else {
     store.activeCategory.value = catId
-    if (catId === 'counterparties') {
+    if (catId === 'counterparties' || catId === 'approvals') {
       store.selectedId.value = null
       store.creatingDoc.value = false
+    }
+    if (catId === 'approvals') {
+      store.fetchMyApprovals()
     }
   }
 }
@@ -51,7 +54,9 @@ function handleCategoryClick(catId: string) {
       </div>
       <UButton
         v-for="cat in [
-          { id: 'all', label: 'Всі документи', icon: 'i-lucide-files' },
+        { id: 'all', label: 'Всі документи', icon: 'i-lucide-files' },
+        { id: 'approvals', label: 'Погодження', icon: 'i-lucide-user-check' },
+        { id: 'tasks', label: 'Завдання', icon: 'i-lucide-check-square' },
           { id: 'calendar', label: 'Календар', icon: 'i-lucide-calendar-days' },
           { id: 'favorites', label: 'Обрані', icon: 'i-lucide-star' },
           { id: 'archive', label: 'Архів', icon: 'i-lucide-archive' },
@@ -67,6 +72,8 @@ function handleCategoryClick(catId: string) {
       >
         {{ cat.label }}
         <UBadge v-if="cat.id === 'all'" :label="String(store.activeCount.value)" variant="subtle" size="xs" class="ml-auto" />
+        <UBadge v-else-if="cat.id === 'approvals' && store.myApprovals.value.length" :label="String(store.myApprovals.value.length)" color="warning" variant="subtle" size="xs" class="ml-auto" />
+        <UBadge v-else-if="cat.id === 'tasks' && store.myTasks.value.filter(t => t.status !== 'completed').length" :label="String(store.myTasks.value.filter(t => t.status !== 'completed').length)" color="error" variant="subtle" size="xs" class="ml-auto" />
         <UBadge v-else-if="cat.id === 'favorites' && store.favorites.value.size" :label="String(store.favorites.value.size)" color="warning" variant="subtle" size="xs" class="ml-auto" />
         <UBadge v-else-if="cat.id === 'archive' && store.archivedCount.value" :label="String(store.archivedCount.value)" variant="subtle" size="xs" class="ml-auto" />
       </UButton>

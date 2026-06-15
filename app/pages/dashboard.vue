@@ -19,6 +19,7 @@ onMounted(async () => {
   store.loadFavorites()
   await store.refreshAll()
   await store.bootstrapEuSign()
+  await store.fetchMyTasks()
 })
 </script>
 
@@ -26,15 +27,21 @@ onMounted(async () => {
   <div class="flex h-screen overflow-hidden bg-background">
     <DashboardSidebar />
 
-    <DashboardDocListPanel v-if="store.activeCategory.value !== 'counterparties'" />
+    <DashboardDocListPanel v-if="store.activeCategory.value !== 'counterparties' && store.activeCategory.value !== 'tasks'" />
 
     <!-- ГОЛОВНА ОБЛАСТЬ -->
     <div class="flex-1 overflow-y-auto">
       <!-- КОНТРАГЕНТИ -->
       <DashboardCounterpartiesView v-if="store.activeCategory.value === 'counterparties'" />
 
+      <!-- ЗАВДАННЯ -->
+      <DashboardTasksView v-else-if="store.activeCategory.value === 'tasks'" />
+
       <!-- КАЛЕНДАР ДОКУМЕНТІВ -->
       <DashboardCalendarView v-else-if="store.activeCategory.value === 'calendar' && !store.selectedId.value" />
+
+      <!-- ПОГОДЖЕННЯ (вхідна черга для поточного користувача) -->
+      <DashboardApprovalsView v-else-if="store.activeCategory.value === 'approvals'" />
 
       <div v-else-if="!store.selectedId.value && !store.creatingDoc.value" class="flex items-center justify-center h-full">
         <div class="text-center text-muted">
@@ -54,7 +61,9 @@ onMounted(async () => {
 
         <DashboardStepDocument />
         <DashboardStepValidation />
+        <DashboardStepApproval />
         <DashboardStepSigning />
+        <DashboardStepResolutions v-if="store.docStatus.value === 'signed'" />
         <DashboardStepDelivery />
       </div>
     </div>
