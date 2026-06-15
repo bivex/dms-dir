@@ -30,18 +30,24 @@ watch(() => form.doc_id, (newId) => {
   }
 }, { immediate: true })
 
-function addTask() {
+function buildDraftTask() {
   const uid = Number(nextExecutorId.value)
   const user = store.users.value.find((u: any) => u.id === uid)
   if (!user || !nextDescription.value.trim() || !nextDueDate.value.trim()) {
-    return
+    return null
   }
-  tasks.value.push({
+  return {
     executor: user.name,
     executor_user_id: user.id,
     description: nextDescription.value.trim(),
     due_date: nextDueDate.value.trim()
-  })
+  }
+}
+
+function addTask() {
+  const task = buildDraftTask()
+  if (!task) return
+  tasks.value.push(task)
   nextExecutorId.value = undefined
   nextDescription.value = ''
   nextDueDate.value = ''
@@ -53,10 +59,16 @@ function removeTask(index: number) {
 
 async function submitResolution() {
   if (!resolutionText.value.trim()) return
-  const success = await store.addDocResolution(form.doc_id, resolutionText.value.trim(), tasks.value)
+  // Підхопити заповнене, але ще не додане кнопкою «+» завдання, щоб воно не загубилось.
+  const pending = buildDraftTask()
+  const allTasks = pending ? [...tasks.value, pending] : [...tasks.value]
+  const success = await store.addDocResolution(form.doc_id, resolutionText.value.trim(), allTasks)
   if (success) {
     resolutionText.value = ''
     tasks.value = []
+    nextExecutorId.value = undefined
+    nextDescription.value = ''
+    nextDueDate.value = ''
     // Also reload the global tasks so sidebar badges update
     await store.fetchMyTasks()
   }
