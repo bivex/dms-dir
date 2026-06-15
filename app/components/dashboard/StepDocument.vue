@@ -306,6 +306,13 @@ function removeSigner(index: number) {
         help="наскрізний індекс за типом документа + поточна дата при поданні у чергу"
       />
 
+      <UCheckbox
+        v-if="form.fmt === 'pdf'"
+        v-model="form.pagination_barcode"
+        label="Штрих-код пагінації (Code128)"
+        help="службовий штрихкод на кожній сторінці PDF для потокового сканування й звірки комплектності пачки"
+      />
+
       <div v-if="store.selectedIsScanned.value" class="flex items-center gap-2 p-3 rounded border border-default text-sm text-muted">
         <UIcon name="i-lucide-scan-line" class="text-primary flex-shrink-0" />
         Скан-копія: оригіналом є завантажений файл. Текст не редагується — документ лише підписують КЕП.

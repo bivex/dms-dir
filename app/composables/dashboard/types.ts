@@ -90,6 +90,7 @@ export type DocForm = {
   journal_id?: number | null
   approval_type?: 'sequential' | 'parallel'
   approverUsers: ApproverUser[]
+  pagination_barcode?: boolean
 }
 
 export interface CounterpartyEntry {

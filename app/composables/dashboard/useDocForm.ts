@@ -24,7 +24,8 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     signerUsers: [] as SignerUser[],
     journal_id: null,
     approval_type: 'sequential',
-    approverUsers: [] as ApproverUser[]
+    approverUsers: [] as ApproverUser[],
+    pagination_barcode: false
   })
 
   // авто-реєстрація: індекс і дата присвоюються бекендом при поданні у чергу.
@@ -127,7 +128,8 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       signers: signerLines,
       journal_id: form.journal_id ? Number(form.journal_id) : null,
       approval_type: form.approval_type,
-      approvers: approvers
+      approvers: approvers,
+      pagination_barcode: !!form.pagination_barcode
     }
   }
 
@@ -142,6 +144,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     form.journal_id = null
     form.approval_type = 'sequential'
     form.approverUsers = []
+    form.pagination_barcode = false
     report.value = null
     pdfaInfo.value = null
     docStatus.value = ''
@@ -188,6 +191,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       // doc_type до реєстрації живе лише в content_json (колонка doc_type — null),
       // тож читаємо звідти з фолбеком на колонку.
       if (cj.doc_type) form.doc_type = String(cj.doc_type)
+      form.pagination_barcode = !!cj.pagination_barcode
       const b = cj.body
       form.body = Array.isArray(b) ? b.join('\n') : String(b ?? '')
     }
