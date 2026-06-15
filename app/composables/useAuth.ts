@@ -55,6 +55,14 @@ export function useAuth() {
       headers: {
         ...(opts.headers as Record<string, string> | undefined),
         ...(token.value ? { Authorization: `Bearer ${token.value}` } : {})
+      },
+      onResponseError({ response }) {
+        // Токен невалідний/прострочений — чистимо сесію й ведемо на логін,
+        // щоб не лишати зламаний дашборд із 401 у консолі.
+        if (response.status === 401 && import.meta.client) {
+          logout()
+          navigateTo('/login')
+        }
       }
     })
   }
