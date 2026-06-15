@@ -288,8 +288,8 @@ function removeSigner(index: number) {
           </div>
         </div>
       </UFormField>
-      <UFormField label="Заголовок">
-        <UInput v-model="form.title" class="w-full" />
+      <UFormField label="Заголовок до тексту" help="Про що документ (напр. «Про надання відпустки»). Не дублюйте вид документа.">
+        <UInput v-model="form.title" placeholder="Про що цей документ…" class="w-full" />
       </UFormField>
       <UFormField label="Дата реєстрації" :help="store.autoRegister.value ? 'авто при поданні' : 'введіть вручну'">
         <UInput
