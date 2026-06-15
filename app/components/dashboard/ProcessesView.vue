@@ -256,6 +256,7 @@ async function doCreate() {
               class="cursor-move"
               @mousedown="onNodeDown($event, n)"
             >
+              <title>{{ n.label }}</title>
               <rect
                 :width="NODE_W" :height="NODE_H"
                 :rx="n.type === 'gateway' ? 28 : 8"
@@ -266,6 +267,7 @@ async function doCreate() {
               />
               <text :x="NODE_W/2" :y="NODE_H/2 + 4" text-anchor="middle" font-size="12" fill="#fff" font-weight="500">
                 {{ n.label.length > 20 ? n.label.slice(0, 19) + '…' : n.label }}
+                <title>{{ n.label }}</title>
               </text>
             </g>
           </svg>
