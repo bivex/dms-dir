@@ -59,6 +59,13 @@ export interface ApproverUser {
   position: string
 }
 
+/** Обраний у формі підписант — ПІБ+посада (із користувачів системи або вручну). */
+export interface SignerUser {
+  user_id?: number | null
+  full_name: string
+  position: string
+}
+
 /** Користувач системи (для вибору погоджувачів/підписантів). */
 export interface UserEntry {
   id: number
@@ -79,6 +86,7 @@ export type DocForm = {
   reg_index: string
   body: string
   signers: string
+  signerUsers: SignerUser[]
   journal_id?: number | null
   approval_type?: 'sequential' | 'parallel'
   approverUsers: ApproverUser[]

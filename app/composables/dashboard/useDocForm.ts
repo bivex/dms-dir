@@ -1,5 +1,5 @@
 import type { StepperItem, TimelineItem } from '@nuxt/ui'
-import type { DocForm, PdfaInfo, SignerEntry, ApproverEntry, ApproverUser, ValidationReport, UiColor } from './types'
+import type { DocForm, PdfaInfo, SignerEntry, ApproverEntry, ApproverUser, SignerUser, ValidationReport, UiColor } from './types'
 
 /**
  * Стан картки документа + валідація + черга підписання (без самої логіки
@@ -21,6 +21,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     reg_index: '',
     body: '',
     signers: '',
+    signerUsers: [] as SignerUser[],
     journal_id: null,
     approval_type: 'sequential',
     approverUsers: [] as ApproverUser[]
@@ -102,10 +103,11 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
 
   // --- дії над формою ---
   function buildPayload() {
-    const signerLines = form.signers.split('\n').filter(Boolean).map((line, i) => {
-      const [full_name, position] = line.split('|').map(s => s.trim())
-      return { full_name: full_name ?? line.trim(), position: position ?? '', order_index: i }
-    })
+    const signerLines = form.signerUsers.map((u, i) => ({
+      full_name: u.full_name,
+      position: u.position,
+      order_index: i
+    }))
     const approvers = form.approverUsers.map((u, i) => ({
       order_index: i,
       user_id: u.user_id,
@@ -136,6 +138,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     form.reg_index = ''
     form.body = ''
     form.signers = ''
+    form.signerUsers = []
     form.journal_id = null
     form.approval_type = 'sequential'
     form.approverUsers = []
@@ -163,6 +166,11 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     form.doc_type = full.doc_type || ''
     form.fmt = full.fmt ?? 'pdf'
     form.signers = full.signers.map(s => `${s.full_name} | ${s.position}`).join('\n')
+    form.signerUsers = full.signers.map(s => ({
+      user_id: (s as any).user_id ?? null,
+      full_name: s.full_name,
+      position: s.position
+    }))
     form.journal_id = full.journal_id ?? null
     form.approval_type = (full.approval_type as any) ?? 'sequential'
     form.approverUsers = full.approvers

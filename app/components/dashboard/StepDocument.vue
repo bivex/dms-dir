@@ -4,6 +4,36 @@ import { useDashboard } from '~/composables/dashboard/useDashboard'
 const store = useDashboard()
 const { form } = store
 
+// Топ-25 найуживаніших видів документів (організаційно-розпорядча документація,
+// ДСТУ 4163). Користувач може обрати зі списку або вписати власний вид.
+const docTypeOptions = [
+  'Наказ',
+  'Розпорядження',
+  'Постанова',
+  'Рішення',
+  'Протокол',
+  'Витяг з протоколу',
+  'Лист',
+  'Службова записка',
+  'Доповідна записка',
+  'Пояснювальна записка',
+  'Заява',
+  'Акт',
+  'Довідка',
+  'Положення',
+  'Інструкція',
+  'Посадова інструкція',
+  'Договір',
+  'Угода',
+  'Додаткова угода',
+  'Наказ про відпустку',
+  'Наказ про прийняття на роботу',
+  'Наказ про звільнення',
+  'Звіт',
+  'Доручення',
+  'Розпорядчий лист'
+]
+
 const isFocused = ref(false)
 
 const selectedJournalId = computed({
@@ -71,6 +101,28 @@ function addApprover(userId: number | string) {
 
 function removeApprover(index: number) {
   form.approverUsers.splice(index, 1)
+}
+
+// Підписанти: вибір із користувачів системи (підставляємо ПІБ+посаду).
+// Один користувач може бути і погоджувачем, і підписантом — окремий список.
+const availableSignerUsers = computed(() =>
+  store.users.value
+    .filter((u: any) => !form.signerUsers.some(s => s.user_id === u.id))
+    .map((u: any) => ({
+      label: `${u.name}${u.position ? ' — ' + u.position : ''} · ${u.email}`,
+      value: u.id
+    }))
+)
+
+function addSigner(userId: number | string) {
+  const id = Number(userId)
+  const u = store.users.value.find((x: any) => x.id === id)
+  if (!u || form.signerUsers.some(s => s.user_id === id)) return
+  form.signerUsers.push({ user_id: id, full_name: u.name, position: u.position })
+}
+
+function removeSigner(index: number) {
+  form.signerUsers.splice(index, 1)
 }
 </script>
 
@@ -153,7 +205,14 @@ function removeApprover(index: number) {
           />
         </UFormField>
         <UFormField label="Вид документа">
-          <UInput v-model="form.doc_type" class="w-full" />
+          <UInputMenu
+            v-model="form.doc_type"
+            :items="docTypeOptions"
+            create-item
+            placeholder="Оберіть або введіть вид…"
+            class="w-full"
+            @create="(v: string) => form.doc_type = v"
+          />
         </UFormField>
         <UFormField label="Формат">
           <USelect
@@ -289,8 +348,38 @@ function removeApprover(index: number) {
         </div>
       </UFormField>
 
-      <UFormField label="Підписанти (ПІБ | посада, по рядку)">
-        <UTextarea v-model="form.signers" :rows="3" placeholder="ПЕТРЕНКО Олександр | Директор" class="w-full" />
+      <UFormField label="Підписанти (із користувачів системи)">
+        <div class="space-y-2 w-full">
+          <USelect
+            :model-value="undefined"
+            :items="availableSignerUsers"
+            placeholder="Оберіть користувача для додавання…"
+            class="w-full"
+            @update:model-value="addSigner"
+          />
+          <div v-if="form.signerUsers.length" class="space-y-1">
+            <div
+              v-for="(s, i) in form.signerUsers"
+              :key="s.user_id ?? i"
+              class="flex items-center gap-2 p-2 rounded border border-default bg-default/5 text-sm"
+            >
+              <span class="text-muted font-mono text-xs w-5 flex-shrink-0">{{ i + 1 }}.</span>
+              <div class="flex-1 min-w-0">
+                <div class="font-medium truncate">{{ s.full_name }}</div>
+                <div class="text-xs text-muted truncate">{{ s.position || 'Посада не вказана' }}</div>
+              </div>
+              <UButton
+                icon="i-lucide-x"
+                size="xs"
+                color="error"
+                variant="ghost"
+                title="Прибрати"
+                @click="removeSigner(i)"
+              />
+            </div>
+          </div>
+          <div v-else class="text-xs text-muted">Підписантів не додано.</div>
+        </div>
       </UFormField>
 
       <div v-if="!store.selectedIsScanned.value" class="flex gap-2">
