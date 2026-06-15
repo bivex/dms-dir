@@ -1,0 +1,249 @@
+import type { StepperItem, TimelineItem } from '@nuxt/ui'
+import type { DocForm, PdfaInfo, SignerEntry, ValidationReport, UiColor } from './types'
+
+/**
+ * Стан картки документа + валідація + черга підписання (без самої логіки
+ * завантаження списку — те в useDocuments). Тут: form-реактив, report/pdfa,
+ * docStatus/signerList, wizard-computed'и, buildPayload/submitDoc.
+ */
+export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
+  const toast = useToast()
+
+  const creatingDoc = ref(false)
+  const form = reactive<DocForm>({
+    doc_id: `DOC-${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}`,
+    org_name: 'ДЕРЖАВНЕ ПІДПРИЄМСТВО «УКРНДНЦ»',
+    subject_type: 'legal',
+    doc_type: 'Наказ',
+    fmt: 'pdf',
+    title: '',
+    date_text: '',
+    reg_index: '',
+    body: '',
+    signers: ''
+  })
+
+  // авто-реєстрація: індекс і дата присвоюються бекендом при поданні у чергу.
+  const autoRegister = ref(true)
+
+  const report = ref<ValidationReport | null>(null)
+  const pdfaInfo = ref<PdfaInfo | null>(null)
+  const docStatus = ref<string>('')
+  const selectedIsScanned = ref(false)
+  const signerList = ref<SignerEntry[]>([])
+  const generating = ref(false)
+  const submitting = ref(false)
+
+  // UI-стан wizard'у
+  const showFindings = ref(true)
+  const showLegalDetails = ref(false)
+
+  // --- wizard computed ---
+  const stepperItems = computed<StepperItem[]>(() => [
+    { title: 'Документ', description: 'картка та реквізити', icon: 'i-lucide-file-text', value: 'document' },
+    { title: 'Перевірка', description: 'ДСТУ 4163 + НПА', icon: 'i-lucide-clipboard-check', value: 'validation' },
+    { title: 'Підписання', description: 'черга та КЕП', icon: 'i-lucide-pen-tool', value: 'signing' },
+    { title: 'Відправлення', description: 'ASiC-E контейнер', icon: 'i-lucide-send', value: 'delivery' }
+  ])
+
+  const activeStepIndex = computed(() => {
+    const st = docStatus.value
+    if (st === 'signed') return 3
+    if (signerList.value.length > 0 || st === 'pending_signatures' || st === 'pending') return 2
+    if (report.value || st === 'generated') return 1
+    return 0
+  })
+
+  const statusBadge = computed<{ label: string, color: UiColor, icon: string }>(() => {
+    const st = docStatus.value
+    if (st === 'signed') return { label: 'Підписано', color: 'success', icon: 'i-lucide-circle-check' }
+    if (st === 'pending_signatures' || st === 'pending') return { label: 'Очікує підпису', color: 'warning', icon: 'i-lucide-clock' }
+    if (st === 'rejected') return { label: 'Помилка підпису', color: 'error', icon: 'i-lucide-circle-alert' }
+    if (creatingDoc.value === false && report.value && !report.value.compliant) {
+      return { label: 'Є зауваження', color: 'warning', icon: 'i-lucide-triangle-alert' }
+    }
+    return { label: 'Чернетка', color: 'neutral', icon: 'i-lucide-circle-dashed' }
+  })
+
+  const docFormatLabel = computed(() => {
+    if (selectedIsScanned.value) return 'Скан-копія PDF'
+    return form.fmt === 'docx' ? 'DOCX-документ' : 'PDF-документ'
+  })
+
+  const signerTimeline = computed<TimelineItem[]>(() =>
+    signerList.value.map((s, i) => ({
+      title: `#${i + 1} ${s.name}`,
+      description: s.position,
+      icon: s.status === 'signed'
+        ? 'i-lucide-circle-check'
+        : s.status === 'rejected'
+          ? 'i-lucide-circle-x'
+          : 'i-lucide-clock',
+      value: String(i)
+    }))
+  )
+
+  const STEP_SECTION_IDS = ['sec-document', 'sec-validation', 'sec-signing', 'sec-delivery']
+  function scrollToStep(v: string | number | undefined) {
+    const idx = typeof v === 'number' ? v : Number(v)
+    if (Number.isNaN(idx)) return
+    const id = STEP_SECTION_IDS[idx]
+    if (id) {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  // --- дії над формою ---
+  function buildPayload() {
+    const signerLines = form.signers.split('\n').filter(Boolean).map((line, i) => {
+      const [full_name, position] = line.split('|').map(s => s.trim())
+      return { full_name: full_name ?? line.trim(), position: position ?? '', order_index: i }
+    })
+    return {
+      doc_id: form.doc_id,
+      org_name: form.org_name,
+      subject_type: form.subject_type,
+      doc_type: form.doc_type,
+      fmt: form.fmt,
+      title: form.title,
+      date_text: form.date_text,
+      reg_index: form.reg_index,
+      body: form.body.split('\n').filter(Boolean),
+      signers: signerLines
+    }
+  }
+
+  function resetFormForNew() {
+    selectedIsScanned.value = false
+    form.doc_id = `DOC-${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}`
+    form.title = ''
+    form.reg_index = ''
+    form.body = ''
+    form.signers = ''
+    report.value = null
+    pdfaInfo.value = null
+    docStatus.value = ''
+    signerList.value = []
+  }
+
+  /** Заповнити форму повними даними документа (з GET /documents/{id}). */
+  function applyDocToForm(full: {
+    doc_id: string; title: string; doc_type: string; status: string; fmt: string
+    signers: Array<{ full_name: string; position: string; status: string }>
+    content_json?: unknown
+    reg_index?: string
+    reg_date?: string
+    is_scanned?: boolean
+  }) {
+    form.doc_id = full.doc_id
+    form.title = full.title
+    form.doc_type = full.doc_type
+    form.fmt = full.fmt ?? 'pdf'
+    form.signers = full.signers.map(s => `${s.full_name} | ${s.position}`).join('\n')
+    const cj = (full as Record<string, unknown>).content_json as Record<string, unknown> | undefined
+    if (cj) {
+      form.org_name = String(cj.org_name ?? form.org_name)
+      form.subject_type = String(cj.subject_type ?? form.subject_type)
+      form.date_text = String(cj.date_text ?? '')
+      form.reg_index = String(cj.reg_index ?? '')
+      const b = cj.body
+      form.body = Array.isArray(b) ? b.join('\n') : String(b ?? '')
+    }
+    const fr = full as Record<string, unknown>
+    if (fr.reg_index) form.reg_index = String(fr.reg_index)
+    if (fr.reg_date) form.date_text = String(fr.reg_date)
+    selectedIsScanned.value = Boolean(fr.is_scanned)
+    docStatus.value = full.status
+    signerList.value = full.signers.map(s => ({
+      name: s.full_name,
+      position: s.position,
+      status: s.status === 'signed' ? 'signed' : s.status === 'rejected' ? 'rejected' : 'pending'
+    }))
+  }
+
+  async function downloadAsice() {
+    const url = `${useRuntimeConfig().public.apiBase}/documents/${form.doc_id}/download/asice`
+    window.open(url, '_blank')
+  }
+
+  async function submitDoc() {
+    submitting.value = true
+    try {
+      const res = await apiFetch<{
+        status: string
+        reg_index?: string
+        reg_date?: string
+        signers: Array<{ full_name: string; position: string; status: string }>
+      }>(
+        `/documents/${form.doc_id}/submit`,
+        { method: 'POST', body: { auto_register: autoRegister.value } }
+      )
+      docStatus.value = res.status
+      if (res.reg_index) form.reg_index = res.reg_index
+      if (res.reg_date) form.date_text = res.reg_date
+      signerList.value = res.signers.map(s => ({
+        name: s.full_name,
+        position: s.position,
+        status: s.status === 'signed' ? 'signed' : s.status === 'rejected' ? 'rejected' : 'pending'
+      }))
+      toast.add({
+        title: 'Зареєстровано та подано у чергу',
+        description: res.reg_index ? `Індекс №${res.reg_index} від ${res.reg_date}` : undefined
+      })
+    }
+    catch (e: unknown) {
+      toast.add({ title: 'Помилка подачі', description: String(e), color: 'error' })
+    }
+    finally {
+      submitting.value = false
+    }
+  }
+
+  function setReport(conf: {
+    conforms?: boolean; compliant?: boolean
+    findings_count?: number; rules_passed?: number
+    results?: Array<{ rule_id: string; conforms: boolean; findings: Array<{ message: string }> }>
+    findings?: Array<{ rule: string; message: string }>
+  } | null) {
+    if (!conf) {
+      report.value = null
+      return
+    }
+    report.value = {
+      compliant: conf.compliant ?? conf.conforms ?? false,
+      rules_passed: conf.rules_passed ?? (conf.results?.filter(x => x.conforms).length ?? 0),
+      findings: conf.findings ?? (conf.results
+        ?.filter(x => !x.conforms)
+        .flatMap(x => x.findings.map(f => ({ rule: x.rule_id, message: f.message }))) ?? [])
+    }
+  }
+
+  return {
+    creatingDoc,
+    form,
+    autoRegister,
+    report,
+    pdfaInfo,
+    docStatus,
+    selectedIsScanned,
+    signerList,
+    generating,
+    submitting,
+    showFindings,
+    showLegalDetails,
+    stepperItems,
+    activeStepIndex,
+    statusBadge,
+    docFormatLabel,
+    signerTimeline,
+    scrollToStep,
+    buildPayload,
+    resetFormForNew,
+    applyDocToForm,
+    submitDoc,
+    downloadAsice,
+    setReport
+  }
+}
+
+export type DocFormStore = ReturnType<typeof useDocForm>
