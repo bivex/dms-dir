@@ -36,6 +36,16 @@ export function createDashboardStore() {
   const docs = ref<DocEntry[]>([])
   const activeCategory = ref<string>('all')
   const searchQuery = ref('')
+  const kepModalOpen = ref(false)
+
+  function openKepModal() {
+    kepModalOpen.value = true
+  }
+
+  function closeKepModal() {
+    kepModalOpen.value = false
+  }
+
   function setActiveCategory(c: string) {
     activeCategory.value = c
   }
@@ -343,7 +353,11 @@ export function createDashboardStore() {
     fetchMyTasks: tasks.fetchMyTasks,
     updateTaskStatus: tasks.updateTaskStatus,
     fetchDocResolutions: tasks.fetchDocResolutions,
-    addDocResolution: tasks.addDocResolution
+    addDocResolution: tasks.addDocResolution,
+    // KEP modal
+    kepModalOpen,
+    openKepModal,
+    closeKepModal
   }
 }
 

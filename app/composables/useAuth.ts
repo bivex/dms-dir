@@ -40,6 +40,19 @@ export function useAuth() {
     }
   }
 
+  async function loginWithKep(sigB64: string, challenge: string): Promise<void> {
+    const res = await $fetch<{ token: string; user: { email: string; name: string } }>(
+      `${apiBase}/auth/login-kep`,
+      { method: 'POST', body: { challenge, signature_b64: sigB64 } }
+    )
+    token.value = res.token
+    user.value = res.user
+    if (import.meta.client) {
+      localStorage.setItem('dilovod_token', res.token)
+      localStorage.setItem('dilovod_user', JSON.stringify(res.user))
+    }
+  }
+
   function logout() {
     token.value = null
     user.value = null
@@ -67,5 +80,5 @@ export function useAuth() {
     })
   }
 
-  return { isLoggedIn, user, token, login, logout, apiFetch }
+  return { isLoggedIn, user, token, login, loginWithKep, logout, apiFetch }
 }

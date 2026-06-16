@@ -82,5 +82,6 @@ onMounted(async () => {
     <DashboardCounterpartyModal />
     <DashboardUserModal />
     <DashboardBulkDeliveryModal />
+    <DashboardKepModal v-if="store.kepModalOpen.value" />
   </div>
 </template>

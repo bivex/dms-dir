@@ -157,11 +157,15 @@ function handleCategoryClick(catId: string) {
       </div>
     </nav>
 
-    <div class="p-3 border-t border-default">
-      <div class="text-xs text-muted mb-1">
-        {{ useAuth().user?.value?.name || useAuth().user?.value?.email }}
+    <div class="p-3 border-t border-default space-y-1">
+      <div class="text-xs text-muted mb-1 flex items-center justify-between px-2">
+        <span class="truncate">{{ useAuth().user?.value?.name || useAuth().user?.value?.email }}</span>
+        <UIcon v-if="useAuth().user?.value?.kep_serial_number" name="i-lucide-key-round" class="text-success flex-shrink-0" title="КЕП прив'язано" />
       </div>
-      <UButton block variant="ghost" color="neutral" icon="i-lucide-log-out" size="sm" @click="logout(); navigateTo('/login')">
+      <UButton block variant="ghost" color="neutral" icon="i-lucide-key-round" size="sm" class="justify-start" @click="store.openKepModal()">
+        Налаштування КЕП
+      </UButton>
+      <UButton block variant="ghost" color="neutral" icon="i-lucide-log-out" size="sm" class="justify-start" @click="logout(); navigateTo('/login')">
         Вийти
       </UButton>
     </div>
