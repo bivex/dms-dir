@@ -1,62 +1,133 @@
-# Nuxt SaaS Template
+# Діловод · dms-dir (web)
 
-[![Nuxt UI](https://img.shields.io/badge/Made%20with-Nuxt%20UI-00DC82?logo=nuxt&labelColor=020420)](https://ui.nuxt.com)
+Вебфронт системи електронного документообігу **ДСТУ 4163:2020**. Nuxt 4 + Nuxt UI 4
+(Vue 3), підпис КЕП у браузері через EUSign (ІІТ). Підмодуль головного репозиторію
+[dstu_4163_2020](../../) — ходить на REST API порталу `portal/` (FastAPI, порт 8000).
 
-Fully built SaaS application to launch your next project with a landing page, a pricing page, a documentation and a blog powered by [Nuxt UI](https://ui.nuxt.com) components.
+> Це клієнтська частина. Доменне ядро (генерація/валідація PDF/DOCX, правила ДСТУ),
+> серверний підпис UAPKI і бекенд — у головному репозиторії. Докладніше — у
+> кореневому `README.md`.
 
-- [Live demo](https://saas-template.nuxt.dev/)
-- [Documentation](https://ui.nuxt.com/docs/getting-started/installation/nuxt)
+## Що це
 
-<a href="https://saas-template.nuxt.dev/" target="_blank">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://ui.nuxt.com/assets/templates/nuxt/saas-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="https://ui.nuxt.com/assets/templates/nuxt/saas-light.png">
-    <img alt="Nuxt SaaS Template" src="https://ui.nuxt.com/assets/templates/nuxt/saas-light.png">
-  </picture>
-</a>
+Дашборд документообігу: картка документа у вигляді майстра (stepper), список
+документів із фільтрами/папками/календарем, погодження, завдання, контрагенти,
+користувачі, процеси, доставка (Ф-107). Підпис — на клієнті: приватний ключ
+ДСТУ 4145 не покидає браузер (Закон 2155-VIII).
 
-## Quick Start
+## Стек
 
-```bash [Terminal]
-npm create nuxt@latest -- -t ui/saas
-```
+- **Nuxt 4.4** + **Nuxt UI 4.8** (TailwindCSS 4, `@nuxt/content` 3 для docs/blog)
+- **Аутентифікація:** Bearer-токен у `localStorage` (`dilovod_token`), SSR-safe через `useState`;
+  два шляхи — `login(email, password)` і `loginWithKep(sigB64, challenge)`
+- **КЕП:** EUSign WASM (`euscpfactory`) для файлового ключа + iframe-віджет ІІТ для
+  апаратного токена; CAdES_X_Long, ДСТУ 4145 / GOST 34.311
+- **Менеджер пакетів:** `pnpm@11.5.2`
 
-## Deploy your own
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-name=saas&repository-url=https%3A%2F%2Fgithub.com%2Fnuxt-ui-templates%2Fsaas&demo-image=https%3A%2F%2Fui.nuxt.com%2Fassets%2Ftemplates%2Fnuxt%2Fsaas-dark.png&demo-url=https%3A%2F%2Fsaas-template.nuxt.dev%2F&demo-title=Nuxt%20SaaS%20Template&demo-description=A%20SaaS%20template%20with%20landing%2C%20pricing%2C%20docs%20and%20blog%20powered%20by%20Nuxt%20Content.)
-
-## Setup
-
-Make sure to install the dependencies:
+## Запуск
 
 ```bash
 pnpm install
+pnpm dev          # http://localhost:3000  (потребує api на :8000)
 ```
 
-## Development Server
+Змінні оточення (через `.env` або `NUXT_PUBLIC_API_BASE`):
 
-Start the development server on `http://localhost:3000`:
+| Env | Призначення | Типово |
+|---|---|---|
+| `NUXT_PUBLIC_API_BASE` | публічна адреса API (браузер) | `http://localhost:8000` |
+| `NUXT_API_BASE_INTERNAL` | внутрішня адреса для SSR-проксі (Docker) | = public |
+| `NUXT_PUBLIC_SITE_URL` | канонічний URL для OG-image | (порожньо) |
+
+### У контексті всього проєкту
+
+З кореня репозиторію:
 
 ```bash
-pnpm dev
+./manage.sh frontend-dev      # nuxt dev :3000
+./manage.sh frontend-build    # production build
+./manage.sh frontend-check    # typecheck
+./manage.sh up                # Docker: api:8000 + web:3000
 ```
 
-## Production
+Docker-збірка — `Dockerfile` (двоступенева: `node:22-alpine` builder → runner,
+запуск `node .output/server/index.mjs`). Внутрішня адреса бекенду для проксі
+вбудовується на етапі build через `NUXT_API_BASE_INTERNAL=http://api:8000`.
 
-Build the application for production:
+## Архітектура
+
+### Сторінки (`app/pages/`)
+
+- `/dashboard` — основний модуль, захищений `middleware/auth`, `layout: dashboard`,
+  `ssr: false` (бо EUSign/live-API на клієнті)
+- `/login`, `/signup` — аутентифікація (`ssr: false`)
+- `/`, `/pricing`, `/blog`, `/changelog`, `/docs/[...slug]` — контент із `@nuxt/content`
+
+### Проксі (`nuxt.config.ts`, routeRules)
+
+- `/api/eusign/**` → бекенд — EUSign WASM, щоб dynamic import не блокувався CORS
+- `/signdata/**` → бекенд — `CAs.json` та ресурси signdata для `euscpfactory`
+
+### Дашборд-store (`app/composables/dashboard/`)
+
+`createDashboardStore()` у `useDashboard.ts` склеює **18 composables** у один store і
+публікує через `provide/inject` (символ `DASHBOARD_KEY`); дочірні компоненти читають
+його через `useDashboard()`. Спільні примітиви (`docs`, `activeCategory`,
+`searchQuery`) створюються в корені, щоб уникнути циклічних залежностей між
+`documents ↔ folders ↔ calendar`.
+
+| Composable | Призначення |
+|---|---|
+| `useDocuments` | CRUD, фільтри, архів, вибір, масове видалення |
+| `useDocForm` | форма-картка, кроки майстра (stepper) |
+| `useEuSign` | підпис КЕП (manifest → CAdES → `/sign`) |
+| `useFolders` | папки, переміщення документів |
+| `useCalendar` | календар документів за датами |
+| `useDocViewer` | перегляд PDF/HTML |
+| `useScanUpload` | завантаження сканів |
+| `useArchiveExport` | експорт архіву за періодом |
+| `useCounterparties` | контрагенти |
+| `useDelivery` | доставка, Ф-107, етикетки |
+| `useJournals` | журнали реєстрації |
+| `useUsers` | керування користувачами |
+| `useProcesses` | бізнес-процеси |
+| `useApprovals` | погодження (послідовні/паралельні) |
+| `useTasks` | завдання та резолюції |
+| `useFavorites` | обране (localStorage) |
+| `useImport` | імпорт/експорт документів |
+| `useAuth` | токен, user, `apiFetch` з авто-logout при 401 |
+
+### Життєвий цикл документа
+
+Картка документа — це `UStepper` з кроками (компоненти `app/components/dashboard/Step*.vue`):
+
+```
+StepDocument → StepValidation → StepApproval → StepSigning → StepResolutions → StepDelivery
+```
+
+Статуси: `draft` → `pending_approval` → `pending_signatures` →
+`signed`/`published` | `rejected` | `deleted`. Просроченими вважаються документи,
+що висять у `pending_*` понад 7 днів від `created_at`.
+
+### Потік підпису КЕП (`useEuSign.signCurrent`)
+
+1. `GET /documents/{id}/manifest` — маніфест для підпису
+2. Підпис CAdES_X_Long у браузері (файловий ключ через `euscpfactory` або токен через віджет)
+3. `POST /documents/{id}/sign` із `signature_b64` → сервер приймає готовий p7s
+
+`bootstrap()` динамічно інжектить `/eusign.js` і робить `import('/api/eusign/modules/euscpfactory.js')`
+через `new Function` (обхід статичного аналізу Vite — файл не існує локально).
+
+## Скрипти
 
 ```bash
-pnpm build
+pnpm dev        # дев-сервер
+pnpm build      # production-збірка
+pnpm preview    # локальний превʼю збірки
+pnpm lint       # ESLint
+pnpm typecheck  # vue-tsc
 ```
 
-Locally preview production build:
+## Ліцензія
 
-```bash
-pnpm preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
-
-## Renovate integration
-
-Install [Renovate GitHub app](https://github.com/apps/renovate/installations/select_target) on your repository and you are good to go.
+MIT (як і кореневий репозиторій).
