@@ -77,7 +77,7 @@ async function onKepLogin() {
   loading.value = true
   try {
     // 1. Отримуємо одноразовий челендж з бекенду
-    const apiBase = useRuntimeConfig().public.apiBase
+    const apiBase = useRuntimeConfig().public.apiBase || 'http://localhost:8000'
     const { challenge } = await $fetch<{ challenge: string }>(`${apiBase}/auth/challenge`)
     
     // 2. Підписуємо його за допомогою КЕП

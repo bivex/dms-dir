@@ -19,7 +19,7 @@ async function onLinkKep() {
   loading.value = true
   try {
     // 1. Отримуємо челендж
-    const apiBase = useRuntimeConfig().public.apiBase
+    const apiBase = useRuntimeConfig().public.apiBase || 'http://localhost:8000'
     const { challenge } = await $fetch<{ challenge: string }>(`${apiBase}/auth/challenge`)
     
     // 2. Підписуємо його через КЕП

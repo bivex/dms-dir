@@ -6,7 +6,7 @@
  */
 export function useAuth() {
   const config = useRuntimeConfig()
-  const apiBase = config.public.apiBase as string
+  const apiBase = (config.public.apiBase as string) || 'http://localhost:8000'
 
   // useState — SSR-safe, спільний між сервером і клієнтом після гідратації
   const token = useState<string | null>('auth_token', () => null)
