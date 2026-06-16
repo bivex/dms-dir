@@ -17,6 +17,7 @@ import { useApprovals } from './useApprovals'
 import { useTasks } from './useTasks'
 import { useUsers } from './useUsers'
 import { useProcesses } from './useProcesses'
+import { useImport } from './useImport'
 import { onMounted } from 'vue'
 
 /**
@@ -98,6 +99,7 @@ export function createDashboardStore() {
   const journals = useJournals({ apiFetch })
   const users = useUsers({ apiFetch })
   const processes = useProcesses({ apiFetch })
+  const importStore = useImport({ apiFetch, token, reloadDocs: () => documents.reloadDocs() })
   const approvals = useApprovals({
     apiFetch,
     refreshAll: () => documents.refreshAll(),
@@ -358,7 +360,18 @@ export function createDashboardStore() {
     // KEP modal
     kepModalOpen,
     openKepModal,
-    closeKepModal
+    closeKepModal,
+    // import / export
+    importModalOpen: importStore.importModalOpen,
+    importFile: importStore.importFile,
+    importPreview: importStore.importPreview,
+    importing: importStore.importing,
+    importExporting: importStore.exporting,
+    importResult: importStore.importResult,
+    openImportModal: importStore.openImportModal,
+    onFileSelected: importStore.onFileSelected,
+    doImport: importStore.doImport,
+    doExport: importStore.doExport
   }
 }
 

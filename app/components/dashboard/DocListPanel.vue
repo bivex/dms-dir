@@ -56,8 +56,25 @@ function statusMeta(status: string): { color: string; label: string; dot: string
           variant="ghost"
           color="neutral"
           size="xs"
-          title="Вивантажити архів"
+          title="Вивантажити архів (ZIP)"
           @click="store.openExportModal()"
+        />
+        <UButton
+          icon="i-lucide-download"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          title="Експорт JSON-бекапу"
+          :loading="store.importExporting.value"
+          @click="store.doExport()"
+        />
+        <UButton
+          icon="i-lucide-upload"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          title="Відновити з бекапу"
+          @click="store.openImportModal()"
         />
       </div>
     </div>
