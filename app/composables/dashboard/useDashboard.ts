@@ -319,6 +319,7 @@ export function createDashboardStore() {
     userEditId: users.userEditId,
     userSaving: users.userSaving,
     userForm: users.userForm,
+    currentEditingUser: users.currentEditingUser,
     openCreateUser: users.openCreateUser,
     openEditUser: users.openEditUser,
     saveUser: users.saveUser,

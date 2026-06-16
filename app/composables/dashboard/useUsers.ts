@@ -19,6 +19,7 @@ export function useUsers(deps: {
   const userModalMode = ref<'create' | 'edit'>('create')
   const userEditId = ref<number | null>(null)
   const userSaving = ref(false)
+  const currentEditingUser = ref<UserEntry | null>(null)
 
   const userForm = reactive({
     name: '',
@@ -41,6 +42,7 @@ export function useUsers(deps: {
   function openCreateUser() {
     userModalMode.value = 'create'
     userEditId.value = null
+    currentEditingUser.value = null
     userForm.name = ''
     userForm.email = ''
     userForm.position = ''
@@ -51,6 +53,7 @@ export function useUsers(deps: {
   function openEditUser(u: UserEntry) {
     userModalMode.value = 'edit'
     userEditId.value = u.id
+    currentEditingUser.value = u
     userForm.name = u.name
     userForm.email = u.email
     userForm.position = u.position || ''
@@ -134,6 +137,7 @@ export function useUsers(deps: {
     userEditId,
     userSaving,
     userForm,
+    currentEditingUser,
     reloadUsers,
     openCreateUser,
     openEditUser,

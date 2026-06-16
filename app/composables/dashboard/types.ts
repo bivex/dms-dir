@@ -72,6 +72,9 @@ export interface UserEntry {
   name: string
   email: string
   position: string
+  kep_subject_cn?: string | null
+  kep_serial_number?: string | null
+  kep_certificate_serial?: string | null
 }
 
 /** Реактивна форма картки документа. */

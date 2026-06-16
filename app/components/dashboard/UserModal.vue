@@ -16,12 +16,30 @@ const form = store.userForm
 
         <div class="space-y-3">
           <UFormField label="Імʼя (ПІБ)" required>
-            <UInput
-              v-model="form.name"
-              placeholder="напр. КОВАЛЬЧУК Ірина"
-              class="w-full"
-              autofocus
-            />
+            <div class="flex gap-2 w-full">
+              <UInput
+                v-model="form.name"
+                placeholder="напр. КОВАЛЬЧУК Ірина"
+                class="flex-1"
+                autofocus
+              />
+              <UButton
+                v-if="store.currentEditingUser.value?.kep_subject_cn"
+                variant="soft"
+                color="primary"
+                icon="i-lucide-refresh-cw"
+                title="Оновити ім'я з сертифіката КЕП"
+                @click="form.name = store.currentEditingUser.value.kep_subject_cn"
+              >
+                З КЕП
+              </UButton>
+            </div>
+            <div v-if="store.currentEditingUser.value?.kep_subject_cn" class="text-xs text-muted flex items-center gap-1.5 mt-1.5 bg-primary/5 p-2 rounded border border-primary/10">
+              <UIcon name="i-lucide-key-round" class="text-primary flex-shrink-0" />
+              <span>
+                Імʼя в сертифікаті: <strong class="text-primary font-medium">{{ store.currentEditingUser.value.kep_subject_cn }}</strong>
+              </span>
+            </div>
           </UFormField>
 
           <div class="grid grid-cols-2 gap-3">

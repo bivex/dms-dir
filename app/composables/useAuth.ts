@@ -4,13 +4,23 @@
  * useState дає спільний стан між SSR і клієнтом (гідрація без мерехтіння).
  * localStorage читається тільки на клієнті через plugin або onMounted.
  */
+export interface AuthUser {
+  id: number
+  email: string
+  name: string
+  position?: string | null
+  kep_serial_number?: string | null
+  kep_certificate_serial?: string | null
+  kep_subject_cn?: string | null
+}
+
 export function useAuth() {
   const config = useRuntimeConfig()
   const apiBase = (config.public.apiBase as string) || 'http://localhost:8000'
 
   // useState — SSR-safe, спільний між сервером і клієнтом після гідратації
   const token = useState<string | null>('auth_token', () => null)
-  const user = useState<{ email: string; name: string } | null>('auth_user', () => null)
+  const user = useState<AuthUser | null>('auth_user', () => null)
 
   // На клієнті відновлюємо стан із localStorage (після гідратації)
   if (import.meta.client && token.value === null) {
@@ -28,7 +38,7 @@ export function useAuth() {
   const isLoggedIn = computed(() => !!token.value)
 
   async function login(email: string, password: string): Promise<void> {
-    const res = await $fetch<{ token: string; user: { email: string; name: string } }>(
+    const res = await $fetch<{ token: string; user: AuthUser }>(
       `${apiBase}/auth/login`,
       { method: 'POST', body: { email, password } }
     )
@@ -41,7 +51,7 @@ export function useAuth() {
   }
 
   async function loginWithKep(sigB64: string, challenge: string): Promise<void> {
-    const res = await $fetch<{ token: string; user: { email: string; name: string } }>(
+    const res = await $fetch<{ token: string; user: AuthUser }>(
       `${apiBase}/auth/login-kep`,
       { method: 'POST', body: { challenge, signature_b64: sigB64 } }
     )

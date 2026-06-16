@@ -14,10 +14,21 @@ const hasApprovers = computed(() => {
 
 const isActiveApprover = computed(() => {
   if (store.docStatus.value !== 'pending_approval' || !user.value) return false
-  return store.approverList.value.some((a: any) =>
-    a.status === 'invited' &&
-    a.full_name.trim().toLowerCase() === user.value!.name.trim().toLowerCase()
-  )
+  return store.approverList.value.some((a: any) => {
+    if (a.status !== 'invited') return false
+    
+    // 1. Спершу за user_id
+    if (a.user_id !== null && a.user_id !== undefined && user.value!.id !== undefined) {
+      if (Number(a.user_id) === Number(user.value!.id)) return true
+    }
+    
+    // 2. Фолбек на ПІБ
+    const approverName = a.full_name.trim().toLowerCase()
+    if (approverName === user.value!.name.trim().toLowerCase()) return true
+    if (user.value!.kep_subject_cn && approverName === user.value!.kep_subject_cn.trim().toLowerCase()) return true
+    
+    return false
+  })
 })
 
 function getStatusLabel(status: string) {
