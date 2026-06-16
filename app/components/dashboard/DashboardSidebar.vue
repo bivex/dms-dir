@@ -63,15 +63,12 @@ function handleCategoryClick(catId: string) {
       </div>
       <UButton
         v-for="cat in [
-        { id: 'all', label: 'Всі документи', icon: 'i-lucide-files' },
-        { id: 'approvals', label: 'Погодження', icon: 'i-lucide-user-check' },
-        { id: 'tasks', label: 'Завдання', icon: 'i-lucide-check-square' },
-          { id: 'calendar', label: 'Календар', icon: 'i-lucide-calendar-days' },
+          { id: 'all', label: 'Всі документи', icon: 'i-lucide-files' },
           { id: 'favorites', label: 'Обрані', icon: 'i-lucide-star' },
-          { id: 'archive', label: 'Архів', icon: 'i-lucide-archive' },
-          { id: 'counterparties', label: 'Контрагенти', icon: 'i-lucide-users' },
-          { id: 'users', label: 'Користувачі', icon: 'i-lucide-user-cog' },
-          { id: 'processes', label: 'Процеси', icon: 'i-lucide-workflow' }
+          { id: 'approvals', label: 'Погодження', icon: 'i-lucide-user-check' },
+          { id: 'tasks', label: 'Завдання', icon: 'i-lucide-check-square' },
+          { id: 'calendar', label: 'Календар', icon: 'i-lucide-calendar-days' },
+          { id: 'archive', label: 'Архів', icon: 'i-lucide-archive' }
         ]"
         :key="cat.id"
         block
@@ -87,6 +84,26 @@ function handleCategoryClick(catId: string) {
         <UBadge v-else-if="cat.id === 'tasks' && store.myTasks.value.filter(t => t.status !== 'completed').length" :label="String(store.myTasks.value.filter(t => t.status !== 'completed').length)" color="error" variant="subtle" size="xs" class="ml-auto" />
         <UBadge v-else-if="cat.id === 'favorites' && store.favoritesCount.value" :label="String(store.favoritesCount.value)" color="warning" variant="subtle" size="xs" class="ml-auto" />
         <UBadge v-else-if="cat.id === 'archive' && store.archivedCount.value" :label="String(store.archivedCount.value)" variant="subtle" size="xs" class="ml-auto" />
+      </UButton>
+
+      <div class="text-xs font-medium text-muted uppercase px-2 py-1 mt-3">
+        Довідники
+      </div>
+      <UButton
+        v-for="cat in [
+          { id: 'counterparties', label: 'Контрагенти', icon: 'i-lucide-users' },
+          { id: 'users', label: 'Користувачі', icon: 'i-lucide-user-cog' },
+          { id: 'processes', label: 'Процеси', icon: 'i-lucide-workflow' }
+        ]"
+        :key="cat.id"
+        block
+        variant="ghost"
+        :color="store.activeCategory.value === cat.id ? 'primary' : 'neutral'"
+        :icon="cat.icon"
+        class="justify-start mb-0.5"
+        @click="handleCategoryClick(cat.id)"
+      >
+        {{ cat.label }}
       </UButton>
 
       <!-- ПАПКИ-КАТЕГОРІЇ -->
