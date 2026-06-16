@@ -22,13 +22,13 @@
   два шляхи — `login(email, password)` і `loginWithKep(sigB64, challenge)`
 - **КЕП:** EUSign WASM (`euscpfactory`) для файлового ключа + iframe-віджет ІІТ для
   апаратного токена; CAdES_X_Long, ДСТУ 4145 / GOST 34.311
-- **Менеджер пакетів:** `pnpm@11.5.2`
+- **Менеджер пакетів:** `bun@1.1.27`
 
 ## Запуск
 
 ```bash
-pnpm install
-pnpm dev          # http://localhost:3000  (потребує api на :8000)
+bun install
+bun run dev       # http://localhost:3000  (потребує api на :8000)
 ```
 
 Змінні оточення (через `.env` або `NUXT_PUBLIC_API_BASE`):
@@ -44,15 +44,17 @@ pnpm dev          # http://localhost:3000  (потребує api на :8000)
 З кореня репозиторію:
 
 ```bash
-./manage.sh frontend-dev      # nuxt dev :3000
-./manage.sh frontend-build    # production build
-./manage.sh frontend-check    # typecheck
+./manage.sh frontend-dev      # bun run dev :3000
+./manage.sh frontend-build    # production build (bun run build)
+./manage.sh frontend-check    # typecheck (bun run typecheck)
 ./manage.sh up                # Docker: api:8000 + web:3000
 ```
 
 Docker-збірка — `Dockerfile` (двоступенева: `node:22-alpine` builder → runner,
-запуск `node .output/server/index.mjs`). Внутрішня адреса бекенду для проксі
-вбудовується на етапі build через `NUXT_API_BASE_INTERNAL=http://api:8000`.
+запуск `node .output/server/index.mjs`). Дев-режим у `docker-compose` ходить на
+`target: builder` з volume-mount і HMR через Vite на порті `24678` (`CHOKIDAR_USEPOLLING`
+для macOS/Windows). Внутрішня адреса бекенду для проксі вбудовується на етапі build
+через `NUXT_API_BASE_INTERNAL=http://api:8000`.
 
 ## Архітектура
 
@@ -121,11 +123,11 @@ StepDocument → StepValidation → StepApproval → StepSigning → StepResolut
 ## Скрипти
 
 ```bash
-pnpm dev        # дев-сервер
-pnpm build      # production-збірка
-pnpm preview    # локальний превʼю збірки
-pnpm lint       # ESLint
-pnpm typecheck  # vue-tsc
+bun run dev        # дев-сервер
+bun run build      # production-збірка
+bun run preview    # локальний превʼю збірки
+bun run lint       # ESLint
+bun run typecheck  # vue-tsc
 ```
 
 ## Ліцензія
