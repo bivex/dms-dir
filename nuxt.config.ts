@@ -35,11 +35,11 @@ export default defineNuxtConfig({
     '/signup': { prerender: false, ssr: false },
     // проксуємо EUSign WASM з portal щоб dynamic import не блокувався CORS
     '/api/eusign/**': {
-      proxy: `${process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000'}/eusign/**`
+      proxy: `${process.env.NUXT_API_BASE_INTERNAL || process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000'}/eusign/**`
     },
     // CAs.json та інші signdata ресурси для euscpfactory
     '/signdata/**': {
-      proxy: `${process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000'}/signdata/**`
+      proxy: `${process.env.NUXT_API_BASE_INTERNAL || process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000'}/signdata/**`
     }
   },
 
