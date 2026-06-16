@@ -6,12 +6,19 @@ import type { DocForm, PdfaInfo, SignerEntry, ApproverEntry, ApproverUser, Signe
  * завантаження списку — те в useDocuments). Тут: form-реактив, report/pdfa,
  * docStatus/signerList, wizard-computed'и, buildPayload/submitDoc.
  */
+/** Генерує унікальний 8-символьний Base36 ID для документа. */
+function genDocId(): string {
+  // 48-бітний випадковий токен → Base36 верхній регістр, доповнений до 8 символів
+  const rand = Math.floor(Math.random() * 0xFFFFFFFFFFFF)
+  return 'DOC-' + rand.toString(36).toUpperCase().padStart(8, '0').slice(-8)
+}
+
 export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
   const toast = useToast()
 
   const creatingDoc = ref(false)
   const form = reactive<DocForm>({
-    doc_id: `DOC-${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}`,
+    doc_id: genDocId(),
     org_name: 'ДЕРЖАВНЕ ПІДПРИЄМСТВО «УКРНДНЦ»',
     subject_type: 'legal',
     doc_type: 'Наказ',
@@ -135,7 +142,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
 
   function resetFormForNew() {
     selectedIsScanned.value = false
-    form.doc_id = `DOC-${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}`
+    form.doc_id = genDocId()
     form.title = ''
     form.reg_index = ''
     form.body = ''
