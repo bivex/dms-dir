@@ -4,16 +4,35 @@ import { useDashboard } from '~/composables/dashboard/useDashboard'
 const store = useDashboard()
 const confirmDeleteAll = ref(false)
 
-function askDeleteAll() {
-  confirmDeleteAll.value = true
-  // auto-cancel після 4 секунд
-  setTimeout(() => { confirmDeleteAll.value = false }, 4000)
-}
-
-async function doDeleteAll() {
-  confirmDeleteAll.value = false
-  await store.deleteAllDocs()
-}
+const moreItems = computed(() => [
+  [{
+    label: 'Вивантажити архів (ZIP)',
+    icon: 'i-lucide-folder-archive',
+    onSelect: () => store.openExportModal()
+  }, {
+    label: 'Експорт JSON-бекапу',
+    icon: 'i-lucide-download',
+    onSelect: () => store.doExport()
+  }, {
+    label: 'Відновити з бекапу',
+    icon: 'i-lucide-upload',
+    onSelect: () => store.openImportModal()
+  }],
+  [{
+    label: confirmDeleteAll.value ? 'Підтвердити видалення (клікніть ще раз)' : 'Видалити всі документи…',
+    icon: confirmDeleteAll.value ? 'i-lucide-alert-triangle' : 'i-lucide-trash-2',
+    color: 'error' as const,
+    onSelect: () => {
+      if (confirmDeleteAll.value) {
+        confirmDeleteAll.value = false
+        store.deleteAllDocs()
+      } else {
+        confirmDeleteAll.value = true
+        setTimeout(() => { confirmDeleteAll.value = false }, 4000)
+      }
+    }
+  }]
+])
 
 // швидкі фільтри за статусом
 const quickFilters = [
@@ -62,57 +81,10 @@ function statusMeta(status: string): { color: string; label: string; dot: string
           :title="store.selectMode.value ? 'Вийти з режиму вибору' : 'Вибрати для видалення'"
           @click="store.toggleSelectMode()"
         />
-        <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" @click="store.refreshAll()" />
-        <UButton
-          icon="i-lucide-folder-archive"
-          variant="ghost"
-          color="neutral"
-          size="xs"
-          title="Вивантажити архів (ZIP)"
-          @click="store.openExportModal()"
-        />
-        <UButton
-          icon="i-lucide-download"
-          variant="ghost"
-          color="neutral"
-          size="xs"
-          title="Експорт JSON-бекапу"
-          :loading="store.importExporting.value"
-          @click="store.doExport()"
-        />
-        <UButton
-          icon="i-lucide-upload"
-          variant="ghost"
-          color="neutral"
-          size="xs"
-          title="Відновити з бекапу"
-          @click="store.openImportModal()"
-        />
-        <!-- Кнопка "видалити всі" з підтвердженням -->
-        <template v-if="!confirmDeleteAll">
-          <UButton
-            icon="i-lucide-trash-2"
-            variant="ghost"
-            color="error"
-            size="xs"
-            title="Видалити всі документи"
-            @click="askDeleteAll()"
-          />
-        </template>
-        <template v-else>
-          <UButton
-            size="xs"
-            color="error"
-            variant="solid"
-            icon="i-lucide-alert-triangle"
-            @click="doDeleteAll()"
-          >
-            Підтвердити?
-          </UButton>
-          <UButton size="xs" variant="ghost" color="neutral" @click="confirmDeleteAll = false">
-            Ні
-          </UButton>
-        </template>
+        <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="store.refreshAll()" />
+        <UDropdownMenu :items="moreItems" :_content="{ align: 'end' }">
+          <UButton icon="i-lucide-ellipsis" variant="ghost" color="neutral" size="xs" title="Додаткові дії" />
+        </UDropdownMenu>
       </div>
     </div>
 
