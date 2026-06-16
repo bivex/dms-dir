@@ -322,6 +322,20 @@ export function useDocuments(deps: {
     }
   }
 
+  async function deleteAllDocs() {
+    try {
+      const res = await apiFetch<{ deleted: number }>('/documents/all', { method: 'DELETE' })
+      toast.add({ title: `Видалено ${res.deleted} документ(ів)`, color: 'success' })
+      selectedId.value = null
+      selectMode.value = false
+      selectedForDelete.value = new Set()
+      await reloadDocs()
+    }
+    catch (e: unknown) {
+      toast.add({ title: 'Помилка видалення', description: String(e), color: 'error' })
+    }
+  }
+
   return {
     docs,
     selectedId,
@@ -353,6 +367,7 @@ export function useDocuments(deps: {
     toggleSelectAll,
     deleteSelected,
     archiveDoc,
-    unarchiveDoc
+    unarchiveDoc,
+    deleteAllDocs
   }
 }

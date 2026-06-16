@@ -2,6 +2,18 @@
 import { useDashboard } from '~/composables/dashboard/useDashboard'
 
 const store = useDashboard()
+const confirmDeleteAll = ref(false)
+
+function askDeleteAll() {
+  confirmDeleteAll.value = true
+  // auto-cancel після 4 секунд
+  setTimeout(() => { confirmDeleteAll.value = false }, 4000)
+}
+
+async function doDeleteAll() {
+  confirmDeleteAll.value = false
+  await store.deleteAllDocs()
+}
 
 // швидкі фільтри за статусом
 const quickFilters = [
@@ -76,6 +88,31 @@ function statusMeta(status: string): { color: string; label: string; dot: string
           title="Відновити з бекапу"
           @click="store.openImportModal()"
         />
+        <!-- Кнопка "видалити всі" з підтвердженням -->
+        <template v-if="!confirmDeleteAll">
+          <UButton
+            icon="i-lucide-trash-2"
+            variant="ghost"
+            color="error"
+            size="xs"
+            title="Видалити всі документи"
+            @click="askDeleteAll()"
+          />
+        </template>
+        <template v-else>
+          <UButton
+            size="xs"
+            color="error"
+            variant="solid"
+            icon="i-lucide-alert-triangle"
+            @click="doDeleteAll()"
+          >
+            Підтвердити?
+          </UButton>
+          <UButton size="xs" variant="ghost" color="neutral" @click="confirmDeleteAll = false">
+            Ні
+          </UButton>
+        </template>
       </div>
     </div>
 

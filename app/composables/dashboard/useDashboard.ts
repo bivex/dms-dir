@@ -202,6 +202,7 @@ export function createDashboardStore() {
     deleteSelected: documents.deleteSelected,
     archiveDoc: documents.archiveDoc,
     unarchiveDoc: documents.unarchiveDoc,
+    deleteAllDocs: documents.deleteAllDocs,
     // folders
     folders: folders.folders,
     activeFolderId: folders.activeFolderId,
