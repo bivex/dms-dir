@@ -9,6 +9,7 @@ export interface AuthUser {
   email: string
   name: string
   position?: string | null
+  role?: string | null
   kep_serial_number?: string | null
   kep_certificate_serial?: string | null
   kep_subject_cn?: string | null

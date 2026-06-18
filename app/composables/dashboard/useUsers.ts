@@ -25,6 +25,7 @@ export function useUsers(deps: {
     name: '',
     email: '',
     position: '',
+    role: 'clerk',
     password: ''
   })
 
@@ -46,6 +47,7 @@ export function useUsers(deps: {
     userForm.name = ''
     userForm.email = ''
     userForm.position = ''
+    userForm.role = 'clerk'
     userForm.password = ''
     userModalOpen.value = true
   }
@@ -57,6 +59,7 @@ export function useUsers(deps: {
     userForm.name = u.name
     userForm.email = u.email
     userForm.position = u.position || ''
+    userForm.role = u.role || 'clerk'
     userForm.password = ''
     userModalOpen.value = true
   }
@@ -87,6 +90,7 @@ export function useUsers(deps: {
             name,
             email,
             position: userForm.position.trim(),
+            role: userForm.role,
             password: userForm.password.trim()
           }
         })
@@ -96,7 +100,8 @@ export function useUsers(deps: {
         const body: Record<string, string> = {
           name,
           email,
-          position: userForm.position.trim()
+          position: userForm.position.trim(),
+          role: userForm.role
         }
         // пароль шлемо лише якщо введений (зміна паролю)
         if (userForm.password.trim()) body.password = userForm.password.trim()

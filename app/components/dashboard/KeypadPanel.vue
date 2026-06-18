@@ -1,7 +1,23 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useDashboard } from '~/composables/dashboard/useDashboard'
 
 const store = useDashboard()
+const { user } = useAuth()
+const { isAdmin } = useRoles()
+
+/** Чи є поточний користувач активним підписантом цього документа.
+ *  Дзеркально до бекендового _is_active_signer (signing.py):
+ *  співпадання по ПІБ / kep_subject_cn, або admin для службової заміни. */
+const isActiveSigner = computed(() => {
+  if (isAdmin.value) return true
+  const pending = store.signerList.value.find(s => s.status === 'pending')
+  if (!pending || !user.value) return false
+  const name = (user.value.name || '').trim().toLowerCase()
+  const cn = (user.value.kep_subject_cn || '').trim().toLowerCase()
+  const signerName = (pending.name || '').trim().toLowerCase()
+  return signerName in { [name]: 1, [cn]: 1 }
+})
 </script>
 
 <template>
@@ -74,8 +90,15 @@ const store = useDashboard()
       }}
     </div>
 
+    <!-- не активний підписант — повідомлення замість кнопки -->
+    <div v-if="!isActiveSigner" class="flex items-center gap-2 p-3 rounded border border-info/40 bg-info/10 text-sm text-info">
+      <UIcon name="i-lucide-info" class="flex-shrink-0" />
+      Ви не є активним підписувачем цього документа. Підпис доступний лише призначеному підписанту (або адміністратору).
+    </div>
+
     <!-- (c) SINGLE PRIMARY -->
     <UButton
+      v-else
       icon="i-lucide-pen-tool"
       color="success"
       size="lg"

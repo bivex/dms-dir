@@ -191,7 +191,12 @@ function removeSigner(index: number) {
       </div>
     </div>
 
-    <div class="space-y-4">
+    <div v-if="store.isLocked.value" class="flex items-center gap-2 p-3 rounded border border-warning/40 bg-warning/10 text-sm text-warning">
+      <UIcon name="i-lucide-lock" class="flex-shrink-0" />
+      Документ підписаний / у роботі — редагування заборонене. Щоб змінити — відхильте підпис/погодження (документ повернеться у чернетку).
+    </div>
+
+    <fieldset :disabled="store.isLocked.value" class="space-y-4 border-0 p-0 m-0">
       <div class="grid grid-cols-2 gap-4">
         <UFormField label="Тип суб'єкта">
           <USelect
@@ -389,11 +394,11 @@ function removeSigner(index: number) {
         </div>
       </UFormField>
 
-      <div v-if="!store.selectedIsScanned.value" class="flex gap-2">
+      <div v-if="!store.selectedIsScanned.value && !store.isLocked.value" class="flex gap-2">
         <UButton icon="i-lucide-save" @click="store.createDoc()">
           Зберегти картку
         </UButton>
       </div>
-    </div>
+    </fieldset>
   </UCard>
 </template>

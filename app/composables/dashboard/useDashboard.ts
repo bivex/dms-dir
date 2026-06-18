@@ -165,6 +165,7 @@ export function createDashboardStore() {
     stepperItems: formStore.stepperItems,
     activeStepIndex: formStore.activeStepIndex,
     statusBadge: formStore.statusBadge,
+    isLocked: formStore.isLocked,
     docFormatLabel: formStore.docFormatLabel,
     signerTimeline: formStore.signerTimeline,
     scrollToStep: formStore.scrollToStep,

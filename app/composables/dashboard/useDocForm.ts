@@ -81,6 +81,14 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     return { label: 'Чернетка', color: 'neutral', icon: 'i-lucide-circle-dashed' }
   })
 
+  /** Чи заблокована форма для редагування поточним користувачем.
+   *  Лочимо все крім draft (pending_approval/pending_signatures/signed/published).
+   *  admin — обхід (службова дія). Задається через useRoles — не дублюємо тут логіку ролей. */
+  const isLocked = computed(() => {
+    const { isDocLocked } = useRoles()
+    return isDocLocked(docStatus.value)
+  })
+
   const docFormatLabel = computed(() => {
     if (selectedIsScanned.value) return 'Скан-копія PDF'
     return form.fmt === 'docx' ? 'DOCX-документ' : 'PDF-документ'
@@ -297,6 +305,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     stepperItems,
     activeStepIndex,
     statusBadge,
+    isLocked,
     docFormatLabel,
     signerTimeline,
     scrollToStep,

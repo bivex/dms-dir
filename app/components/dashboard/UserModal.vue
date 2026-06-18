@@ -3,6 +3,15 @@ import { useDashboard } from '~/composables/dashboard/useDashboard'
 
 const store = useDashboard()
 const form = store.userForm
+const { isAdmin } = useRoles()
+
+// роль можуть встановлювати лише admin; іншим селект показуємо readonly
+const ROLE_OPTIONS = [
+  { label: 'Адміністратор', value: 'admin' },
+  { label: 'Директор', value: 'director' },
+  { label: 'Бухгалтер', value: 'accountant' },
+  { label: 'Клерк (лише чернетки)', value: 'clerk' }
+]
 </script>
 
 <template>
@@ -58,6 +67,18 @@ const form = store.userForm
                 placeholder="напр. Юрист"
                 class="w-full"
               />
+            </UFormField>
+
+            <UFormField label="Роль">
+              <USelect
+                v-model="form.role"
+                :items="ROLE_OPTIONS"
+                :disabled="!isAdmin"
+                class="w-full"
+              />
+              <div v-if="!isAdmin" class="text-xs text-muted mt-1">
+                Зміну ролі може виконувати лише адміністратор.
+              </div>
             </UFormField>
           </div>
 
