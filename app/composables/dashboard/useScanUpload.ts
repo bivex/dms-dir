@@ -34,7 +34,13 @@ export function useScanUpload(deps: {
     scanUploading.value = true
     try {
       const apiBase = useRuntimeConfig().public.apiBase
-      const docId = `SCAN-${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}`
+      // doc_id для скану: SCAN-<YYMMDD>-<4 Base36>. Компактніший за таймстемп
+      // (14 цифр), але зберігає дату оцифрування + унікальний суфікс.
+      const now = new Date()
+      const ymd = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+      const suffix = Math.floor(Math.random() * 0xFFFFFF)
+        .toString(36).toUpperCase().padStart(4, '0').slice(-4)
+      const docId = `SCAN-${ymd}-${suffix}`
       const fd = new FormData()
       fd.append('file', scanFile.value)
       fd.append('doc_id', docId)
