@@ -11,9 +11,7 @@ export default defineNuxtConfig({
     '@nuxt/eslint',
     '@nuxt/image',
     '@nuxt/ui',
-    '@nuxt/content',
-    '@vueuse/nuxt',
-    'nuxt-og-image'
+    '@vueuse/nuxt'
   ],
 
   devtools: {
@@ -22,17 +20,9 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
-  content: {
-    experimental: {
-      sqliteConnector: 'native'
-    }
-  },
-
   routeRules: {
-    '/docs': { redirect: '/docs/getting-started', prerender: false },
     '/dashboard': { prerender: false, ssr: false },
     '/login': { prerender: false, ssr: false },
-    '/signup': { prerender: false, ssr: false },
     // проксуємо EUSign WASM з portal щоб dynamic import не блокувався CORS
     '/api/eusign/**': {
       proxy: `${process.env.NUXT_API_BASE_INTERNAL || process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000'}/eusign/**`
@@ -45,15 +35,6 @@ export default defineNuxtConfig({
 
   compatibilityDate: '2024-07-11',
 
-  nitro: {
-    prerender: {
-      routes: [
-        '/'
-      ],
-      crawlLinks: true
-    }
-  },
-
   eslint: {
     config: {
       stylistic: {
@@ -61,9 +42,5 @@ export default defineNuxtConfig({
         braceStyle: '1tbs'
       }
     }
-  },
-
-  ogImage: {
-    zeroRuntime: true
   }
 })
