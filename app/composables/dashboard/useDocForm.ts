@@ -6,11 +6,48 @@ import type { DocForm, PdfaInfo, SignerEntry, ApproverEntry, ApproverUser, Signe
  * завантаження списку — те в useDocuments). Тут: form-реактив, report/pdfa,
  * docStatus/signerList, wizard-computed'и, buildPayload/submitDoc.
  */
-/** Генерує унікальний 8-символьний Base36 ID для документа. */
-function genDocId(): string {
-  // 48-бітний випадковий токен → Base36 верхній регістр, доповнений до 8 символів
+/** Префікс doc_id за видом документа (укр. назва → компактна 3-4 літерна
+ *  абревіатура латиницею для URL). doc_id потрапляє в URL (/documents/...),
+ *  кирилиця ламала б читабельність і сумісність, тому беремо абревіатуру.
+ *  Невідомий/власний вид → DOC (внутрішній ID).
+ *
+ *  Схема (приклад): NKZ-5E0QFX, LST-7K2M9A, PRT-X9Y2K4.
+ *  Реєстраційний номер (reg_index, присвоюється бекендом при поданні) окремий:
+ *  NKZ-2026-001 — наскрізна нумерація за роком. */
+const DOC_TYPE_PREFIX: Record<string, string> = {
+  'Наказ': 'NKZ',
+  'Наказ про відпустку': 'NKZ-V',
+  'Наказ про прийняття на роботу': 'NKZ-P',
+  'Розпорядження': 'RZD',
+  'Постанова': 'PST',
+  'Рішення': 'RSH',
+  'Протокол': 'PRT',
+  'Витяг з протоколу': 'VPR',
+  'Лист': 'LST',
+  'Службова записка': 'SZP',
+  'Доповідна записка': 'DZP',
+  'Пояснювальна записка': 'PZP',
+  'Заява': 'ZVA',
+  'Акт': 'AKT',
+  'Довідка': 'DVK',
+  'Положення': 'PLH',
+  'Інструкція': 'INS',
+  'Посадова інструкція': 'PIN',
+  'Договір': 'DGV',
+  'Угода': 'UHD',
+  'Додаткова угода': 'DUH'
+}
+
+/** Генерує унікальний doc_id з компактною укр. абревіатурою виду документа.
+ *  Формат: <ПРЕФІКС>-<6 Base36>, напр. NKZ-5E0QFX, LST-7K2M9A, PRT-X9Y2K4.
+ *  docType невідомий/порожній → DOC-XXXXXX (fallback, внутрішній ID). */
+function genDocId(docType?: string): string {
   const rand = Math.floor(Math.random() * 0xFFFFFFFFFFFF)
-  return 'DOC-' + rand.toString(36).toUpperCase().padStart(8, '0').slice(-8)
+    .toString(36).toUpperCase().padStart(6, '0').slice(-6)
+  const prefix = docType && DOC_TYPE_PREFIX[docType]
+    ? DOC_TYPE_PREFIX[docType]
+    : 'DOC'
+  return `${prefix}-${rand}`
 }
 
 export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
@@ -18,7 +55,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
 
   const creatingDoc = ref(false)
   const form = reactive<DocForm>({
-    doc_id: genDocId(),
+    doc_id: genDocId('Наказ'),
     org_name: 'ДЕРЖАВНЕ ПІДПРИЄМСТВО «УКРНДНЦ»',
     subject_type: 'legal',
     doc_type: 'Наказ',
@@ -43,6 +80,15 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
   const docStatus = ref<string>('')
   const selectedIsScanned = ref(false)
   const signerList = ref<SignerEntry[]>([])
+
+  // Коли користувач змінює вид документа у НОВІЙ картці (docStatus порожній) —
+  // оновлюємо doc_id з відповідним укр. префіксом (NAKAZ-…, LYST-…). На вже
+  // збереженому документі doc_id не чіпаємо (це його сталий ідентифікатор).
+  watch(() => form.doc_type, (newType) => {
+    if (docStatus.value === '' && DOC_TYPE_PREFIX[newType]) {
+      form.doc_id = genDocId(newType)
+    }
+  })
   const approverList = ref<ApproverEntry[]>([])
   const generating = ref(false)
   const submitting = ref(false)
@@ -150,7 +196,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
 
   function resetFormForNew() {
     selectedIsScanned.value = false
-    form.doc_id = genDocId()
+    form.doc_id = genDocId(form.doc_type || 'Наказ')
     form.title = ''
     form.reg_index = ''
     form.body = ''
