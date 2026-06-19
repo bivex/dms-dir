@@ -35,6 +35,14 @@ export default defineNuxtConfig({
 
   compatibilityDate: '2024-07-11',
 
+  // Статична збірка для packaged-app (FastAPI віддає .output/public).
+  // nuxt dev ігнорує preset (завжди dev-server), тому proxy /api/eusign/** нижче
+  // лишається робочим у dev. Для static-export proxy не діє — там шлях /api/eusign
+  // обслуговується mount FastAPI (див. PLAN_macos_app.md Етап 2).
+  nitro: {
+    preset: process.env.NITRO_PRESET || 'static'
+  },
+
   eslint: {
     config: {
       stylistic: {

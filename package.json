@@ -1,9 +1,10 @@
 {
-  "name": "nuxt-ui-template-saas",
+  "name": "dilovod-dms",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "nuxt build",
+    "generate": "nuxt generate",
     "dev": "nuxt dev",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
@@ -13,15 +14,12 @@
   "dependencies": {
     "@iconify-json/lucide": "^1.2.111",
     "@iconify-json/simple-icons": "^1.2.85",
-    "@nuxt/content": "^3.14.0",
     "@nuxt/image": "^2.0.0",
     "@nuxt/ui": "^4.8.2",
     "@standard-schema/spec": "^1.1.0",
-    "@takumi-rs/core": "^1.7.0",
     "@vueuse/nuxt": "^14.3.0",
     "mammoth": "^1.12.0",
     "nuxt": "^4.4.8",
-    "nuxt-og-image": "^6.5.2",
     "tailwindcss": "^4.3.0",
     "zod": "^4.4.3"
   },
