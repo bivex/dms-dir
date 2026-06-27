@@ -40,6 +40,12 @@ export interface SignerEntry {
   name: string
   position: string
   status: 'pending' | 'signed' | 'rejected'
+  /** Тип підписанта: 'person' (КЕП особи) чи 'seal' (електронна печатка юрособи).
+   *  Дефолт 'person' — зворотна сумісність (старі документи без печаток). */
+  signer_type?: 'person' | 'seal'
+  /** Дані печатки (тільки для signer_type='seal', після підпису). */
+  organization?: string | null
+  identifier?: string | null
 }
 
 export interface ApproverEntry {
@@ -64,6 +70,9 @@ export interface SignerUser {
   user_id?: number | null
   full_name: string
   position: string
+  /** Тип підписанта: 'person' (КЕП особи, дефолт) чи 'seal' (електронна печатка
+   *  юрособи/ФОП). Для seal повне_ім'я = назва юрособи. */
+  signer_type?: 'person' | 'seal'
 }
 
 /** Користувач системи (для вибору погоджувачів/підписантів). */
@@ -76,6 +85,8 @@ export interface UserEntry {
   kep_subject_cn?: string | null
   kep_serial_number?: string | null
   kep_certificate_serial?: string | null
+  /** CN сертифіката електронної печатки юрособи (окремо від КЕП особи). */
+  organization_cert_cn?: string | null
 }
 
 /** Реактивна форма картки документа. */

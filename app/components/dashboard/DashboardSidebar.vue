@@ -177,10 +177,13 @@ function handleCategoryClick(catId: string) {
     <div class="p-3 border-t border-default space-y-1">
       <div class="text-xs text-muted mb-1 flex items-center justify-between px-2">
         <span class="truncate">{{ useAuth().user?.value?.name || useAuth().user?.value?.email }}</span>
-        <UIcon v-if="useAuth().user?.value?.kep_serial_number" name="i-lucide-key-round" class="text-success flex-shrink-0" title="КЕП прив'язано" />
+        <div class="flex items-center gap-1 flex-shrink-0">
+          <UIcon v-if="useAuth().user?.value?.kep_serial_number" name="i-lucide-key-round" class="text-success" title="КЕП прив'язано" />
+          <UIcon v-if="useAuth().user?.value?.organization_cert_cn" name="i-lucide-stamp" class="text-primary" title="Печатку юрособи прив'язано" />
+        </div>
       </div>
       <UButton block variant="ghost" color="neutral" icon="i-lucide-key-round" size="sm" class="justify-start" @click="store.openKepModal()">
-        Налаштування КЕП
+        Сертифікати
       </UButton>
       <UButton block variant="ghost" color="neutral" icon="i-lucide-log-out" size="sm" class="justify-start" @click="logout(); navigateTo('/login')">
         Вийти

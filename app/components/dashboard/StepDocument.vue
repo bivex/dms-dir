@@ -118,11 +118,26 @@ function addSigner(userId: number | string) {
   const id = Number(userId)
   const u = store.users.value.find((x: any) => x.id === id)
   if (!u || form.signerUsers.some(s => s.user_id === id)) return
-  form.signerUsers.push({ user_id: id, full_name: u.name, position: u.position })
+  form.signerUsers.push({ user_id: id, full_name: u.name, position: u.position, signer_type: 'person' })
 }
 
 function removeSigner(index: number) {
   form.signerUsers.splice(index, 1)
+}
+
+/** Перемкнути тип підписанта person ↔ seal. Для seal підставляємо назву юрособи
+ *  з org_name (якщо ПІБ порожнє) — печатка підписується сертифікатом юрособи. */
+function toggleSignerType(index: number) {
+  const s = form.signerUsers[index]
+  if (!s) return
+  if (s.signer_type === 'seal') {
+    s.signer_type = 'person'
+    return
+  }
+  s.signer_type = 'seal'
+  if (!s.full_name.trim() && form.org_name.trim()) {
+    s.full_name = form.org_name.trim()
+  }
 }
 </script>
 
@@ -377,9 +392,28 @@ function removeSigner(index: number) {
             >
               <span class="text-muted font-mono text-xs w-5 flex-shrink-0">{{ i + 1 }}.</span>
               <div class="flex-1 min-w-0">
-                <div class="font-medium truncate">{{ s.full_name }}</div>
+                <div class="font-medium truncate flex items-center gap-1.5">
+                  {{ s.full_name }}
+                  <UBadge
+                    v-if="s.signer_type === 'seal'"
+                    label="Печатка"
+                    color="primary"
+                    variant="subtle"
+                    size="xs"
+                    icon="i-lucide-stamp"
+                  />
+                </div>
                 <div class="text-xs text-muted truncate">{{ s.position || 'Посада не вказана' }}</div>
               </div>
+              <!-- перемикач типу підписанта: КЕП особи ↔ печатка юрособи -->
+              <UButton
+                :icon="s.signer_type === 'seal' ? 'i-lucide-building-2' : 'i-lucide-user'"
+                :color="s.signer_type === 'seal' ? 'primary' : 'neutral'"
+                :variant="s.signer_type === 'seal' ? 'soft' : 'ghost'"
+                size="xs"
+                :title="s.signer_type === 'seal' ? 'Печатка юрособи (натисніть → КЕП особи)' : 'КЕП особи (натисніть → печатка юрособи)'"
+                @click="toggleSignerType(i)"
+              />
               <UButton
                 icon="i-lucide-x"
                 size="xs"

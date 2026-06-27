@@ -6,16 +6,32 @@ const store = useDashboard()
 const { user } = useAuth()
 const { isAdmin } = useRoles()
 
+/** Активний підписант (перший pending) — окремо computed для повторного використання. */
+const pendingSigner = computed(() =>
+  store.signerList.value.find(s => s.status === 'pending')
+)
+
+/** Чи є активний підписант печаткою юрособи (а не КЕП особи). */
+const pendingIsSeal = computed(() => pendingSigner.value?.signer_type === 'seal')
+
 /** Чи є поточний користувач активним підписантом цього документа.
  *  Дзеркально до бекендового _is_active_signer (signing.py):
- *  співпадання по ПІБ / kep_subject_cn, або admin для службової заміни. */
+ *  - admin — службова заміна (завжди true);
+ *  - seal (печатка): CN сертифіката печатки (organization_cert_cn) збігається з
+ *    назвою юрособи-підписанта;
+ *  - person (КЕП): співпадання по ПІБ / kep_subject_cn. */
 const isActiveSigner = computed(() => {
   if (isAdmin.value) return true
-  const pending = store.signerList.value.find(s => s.status === 'pending')
+  const pending = pendingSigner.value
   if (!pending || !user.value) return false
+  const signerName = (pending.name || '').trim().toLowerCase()
+  if (!signerName) return false
+  if (pending.signer_type === 'seal') {
+    const orgCn = (user.value.organization_cert_cn || '').trim().toLowerCase()
+    return orgCn === signerName
+  }
   const name = (user.value.name || '').trim().toLowerCase()
   const cn = (user.value.kep_subject_cn || '').trim().toLowerCase()
-  const signerName = (pending.name || '').trim().toLowerCase()
   return signerName in { [name]: 1, [cn]: 1 }
 })
 </script>
@@ -93,13 +109,18 @@ const isActiveSigner = computed(() => {
     <!-- не активний підписант — повідомлення замість кнопки -->
     <div v-if="!isActiveSigner" class="flex items-center gap-2 p-3 rounded border border-info/40 bg-info/10 text-sm text-info">
       <UIcon name="i-lucide-info" class="flex-shrink-0" />
-      Ви не є активним підписувачем цього документа. Підпис доступний лише призначеному підписанту (або адміністратору).
+      <span v-if="pendingIsSeal">
+        Електронна печатка не прив'язана до вашого кабінету. Прив'яжіть сертифікат печатки юрособи в налаштуваннях КЕП, щоб накласти печатку.
+      </span>
+      <span v-else>
+        Ви не є активним підписувачем цього документа. Підпис доступний лише призначеному підписанту (або адміністратору).
+      </span>
     </div>
 
     <!-- (c) SINGLE PRIMARY -->
     <UButton
       v-else
-      icon="i-lucide-pen-tool"
+      :icon="pendingIsSeal ? 'i-lucide-stamp' : 'i-lucide-pen-tool'"
       color="success"
       size="lg"
       block
@@ -107,7 +128,7 @@ const isActiveSigner = computed(() => {
       :disabled="(!store.euReady.value && store.keySource.value === 'file') || store.signerList.value.every(s => s.status !== 'pending')"
       @click="store.signCurrent()"
     >
-      Підписати документ
+      {{ pendingIsSeal ? 'Накласти електронну печатку' : 'Підписати документ' }}
     </UButton>
 
     <!-- спрощений текст + «Детальніше» -->

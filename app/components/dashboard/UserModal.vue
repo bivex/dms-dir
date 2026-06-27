@@ -49,6 +49,12 @@ const ROLE_OPTIONS = [
                 Імʼя в сертифікаті: <strong class="text-primary font-medium">{{ store.currentEditingUser.value.kep_subject_cn }}</strong>
               </span>
             </div>
+            <div v-if="store.currentEditingUser.value?.organization_cert_cn" class="text-xs text-muted flex items-center gap-1.5 mt-1.5 bg-primary/5 p-2 rounded border border-primary/10">
+              <UIcon name="i-lucide-stamp" class="text-primary flex-shrink-0" />
+              <span>
+                Печатка юрособи: <strong class="text-primary font-medium">{{ store.currentEditingUser.value.organization_cert_cn }}</strong>
+              </span>
+            </div>
           </UFormField>
 
           <div class="grid grid-cols-2 gap-3">

@@ -141,16 +141,24 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
   })
 
   const signerTimeline = computed<TimelineItem[]>(() =>
-    signerList.value.map((s, i) => ({
-      title: `#${i + 1} ${s.name}`,
-      description: s.position,
-      icon: s.status === 'signed'
-        ? 'i-lucide-circle-check'
+    signerList.value.map((s, i) => {
+      const isSeal = s.signer_type === 'seal'
+      // печатка юрособи — окремий набір іконок (штамп), щоб відрізнити від КЕП особи
+      const icon = s.status === 'signed'
+        ? (isSeal ? 'i-lucide-stamp' : 'i-lucide-circle-check')
         : s.status === 'rejected'
           ? 'i-lucide-circle-x'
-          : 'i-lucide-clock',
-      value: String(i)
-    }))
+          : (isSeal ? 'i-lucide-stamp' : 'i-lucide-clock')
+      return {
+        title: `#${i + 1} ${s.name}`,
+        // печатка: підкреслюємо, що це юрособа, а не ПІБ особи
+        description: isSeal
+          ? `Електронна печатка юрособи${s.organization ? ` · ${s.organization}` : ''}${s.position ? ` · ${s.position}` : ''}`
+          : s.position,
+        icon,
+        value: String(i)
+      }
+    })
   )
 
   const STEP_SECTION_IDS = ['sec-document', 'sec-validation', 'sec-approval', 'sec-signing', 'sec-delivery']
@@ -168,7 +176,10 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     const signerLines = form.signerUsers.map((u, i) => ({
       full_name: u.full_name,
       position: u.position,
-      order_index: i
+      order_index: i,
+      // тип підписанта: person (КЕП особи) | seal (електронна печатка юрособи).
+      // Дефолт 'person' — зворотна сумісність (старі підписанти без типу).
+      signer_type: u.signer_type ?? 'person'
     }))
     const approvers = form.approverUsers.map((u, i) => ({
       order_index: i,
@@ -216,7 +227,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
   /** Заповнити форму повними даними документа (з GET /documents/{id}). */
   function applyDocToForm(full: {
     doc_id: string; title: string; doc_type: string; status: string; fmt: string
-    signers: Array<{ full_name: string; position: string; status: string }>
+    signers: Array<{ full_name: string; position: string; status: string; signer_type?: string | null; organization?: string | null; identifier?: string | null }>
     content_json?: unknown
     reg_index?: string
     reg_date?: string
@@ -233,7 +244,9 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     form.signerUsers = full.signers.map(s => ({
       user_id: (s as any).user_id ?? null,
       full_name: s.full_name,
-      position: s.position
+      position: s.position,
+      // дефолт 'person' — зворотна сумісність (старі документи без signer_type)
+      signer_type: (s.signer_type === 'seal' ? 'seal' : 'person')
     }))
     form.journal_id = full.journal_id ?? null
     form.approval_type = (full.approval_type as any) ?? 'sequential'
@@ -264,7 +277,10 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     signerList.value = full.signers.map(s => ({
       name: s.full_name,
       position: s.position,
-      status: s.status === 'signed' ? 'signed' : s.status === 'rejected' ? 'rejected' : 'pending'
+      status: s.status === 'signed' ? 'signed' : s.status === 'rejected' ? 'rejected' : 'pending',
+      signer_type: (s.signer_type === 'seal' ? 'seal' : 'person') as 'person' | 'seal',
+      organization: s.organization ?? null,
+      identifier: s.identifier ?? null
     }))
     approverList.value = full.approvers ? full.approvers.map(a => ({
       order_index: a.order_index,
@@ -289,7 +305,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
         status: string
         reg_index?: string
         reg_date?: string
-        signers: Array<{ full_name: string; position: string; status: string }>
+        signers: Array<{ full_name: string; position: string; status: string; signer_type?: string | null }>
       }>(
         `/documents/${form.doc_id}/submit`,
         { method: 'POST', body: { auto_register: autoRegister.value } }
@@ -297,10 +313,17 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       docStatus.value = res.status
       if (res.reg_index) form.reg_index = res.reg_index
       if (res.reg_date) form.date_text = res.reg_date
-      signerList.value = res.signers.map(s => ({
+      // зберігаємо signer_type (беремо з поточного signerList — бекенд submit не
+      // повертає організацію, лише статус черги; тип не змінюється при подачі)
+      signerList.value = res.signers.map((s, i) => ({
         name: s.full_name,
         position: s.position,
-        status: s.status === 'signed' ? 'signed' : s.status === 'rejected' ? 'rejected' : 'pending'
+        status: s.status === 'signed' ? 'signed' : s.status === 'rejected' ? 'rejected' : 'pending',
+        signer_type: (s.signer_type === 'seal'
+          ? 'seal'
+          : signerList.value[i]?.signer_type ?? 'person') as 'person' | 'seal',
+        organization: signerList.value[i]?.organization ?? null,
+        identifier: signerList.value[i]?.identifier ?? null
       }))
       toast.add({
         title: 'Зареєстровано та подано у чергу',

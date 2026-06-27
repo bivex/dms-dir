@@ -13,6 +13,9 @@ export interface AuthUser {
   kep_serial_number?: string | null
   kep_certificate_serial?: string | null
   kep_subject_cn?: string | null
+  /** CN сертифіката ЕЛЕКТРОННОЇ ПЕЧАТКИ юрособи, прив'язаного в кабінеті.
+   *  Окремо від kep_subject_cn (КЕП особи). Дзеркало бекендового User.organization_cert_cn. */
+  organization_cert_cn?: string | null
 }
 
 export function useAuth() {

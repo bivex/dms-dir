@@ -89,7 +89,13 @@ onMounted(() => {
                 <div class="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 text-primary text-sm font-semibold flex-shrink-0">
                   {{ u.name.charAt(0).toUpperCase() }}
                 </div>
-                <div class="font-semibold text-default">{{ u.name }}</div>
+                <div class="min-w-0">
+                  <div class="font-semibold text-default flex items-center gap-1.5">
+                    {{ u.name }}
+                    <UIcon v-if="u.organization_cert_cn" name="i-lucide-stamp" class="text-primary flex-shrink-0" title="Печатка юрособи прив'язана" />
+                  </div>
+                  <div v-if="u.organization_cert_cn" class="text-[10px] text-muted truncate">{{ u.organization_cert_cn }}</div>
+                </div>
               </div>
             </td>
             <td class="py-4 px-4">
