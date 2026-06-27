@@ -248,6 +248,7 @@ export function createDashboardStore() {
     scanFile: scan.scanFile,
     scanTitle: scan.scanTitle,
     scanSigners: scan.scanSigners,
+    scanDate: scan.scanDate,
     scanUploading: scan.scanUploading,
     openScanModal: scan.openScanModal,
     uploadScan: scan.uploadScan,

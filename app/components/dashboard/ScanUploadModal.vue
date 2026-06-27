@@ -40,6 +40,10 @@ const store = useDashboard()
           />
         </UFormField>
 
+        <UFormField label="Дата скану (необов'язково)">
+          <UInput v-model="store.scanDate.value" type="date" class="w-full" />
+        </UFormField>
+
         <div class="flex gap-2 justify-end">
           <UButton variant="ghost" color="neutral" @click="store.scanModalOpen.value = false">
             Скасувати

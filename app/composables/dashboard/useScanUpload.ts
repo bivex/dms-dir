@@ -17,12 +17,14 @@ export function useScanUpload(deps: {
   const scanFile = ref<File | null>(null)
   const scanTitle = ref('')
   const scanSigners = ref('')
+  const scanDate = ref('')
   const scanUploading = ref(false)
 
   function openScanModal() {
     scanFile.value = null
     scanTitle.value = ''
     scanSigners.value = ''
+    scanDate.value = ''
     scanModalOpen.value = true
   }
 
@@ -46,6 +48,7 @@ export function useScanUpload(deps: {
       fd.append('doc_id', docId)
       fd.append('title', scanTitle.value || scanFile.value.name)
       fd.append('signers', scanSigners.value)
+      if (scanDate.value) fd.append('scan_date', scanDate.value)
       const res = await fetch(`${apiBase}/documents/scan`, {
         method: 'POST',
         headers: token.value ? { Authorization: `Bearer ${token.value}` } : {},
@@ -69,5 +72,5 @@ export function useScanUpload(deps: {
     }
   }
 
-  return { scanModalOpen, scanFile, scanTitle, scanSigners, scanUploading, openScanModal, uploadScan }
+  return { scanModalOpen, scanFile, scanTitle, scanSigners, scanDate, scanUploading, openScanModal, uploadScan }
 }
