@@ -88,9 +88,9 @@ async function onUnlinkCert(type: 'esign' | 'eseal') {
 </script>
 
 <template>
-  <UModal v-model:open="store.kepModalOpen.value" :ui="{ content: 'max-w-md w-full' }">
+  <UModal v-model:open="store.kepModalOpen.value" :ui="{ content: 'max-w-3xl w-full' }">
     <template #content>
-      <div class="p-5 space-y-4">
+      <div class="p-6 space-y-5">
         <!-- Заголовок -->
         <div class="flex items-center gap-2 font-semibold">
           <UIcon name="i-lucide-key-round" class="text-primary text-lg" />
@@ -99,66 +99,69 @@ async function onUnlinkCert(type: 'esign' | 'eseal') {
 
         <USeparator />
 
-        <!-- Поточна прив'язка: КЕП особи -->
-        <div class="p-4 rounded-lg bg-neutral-50 dark:bg-neutral-800 space-y-2 border border-default text-sm">
-          <div class="font-medium text-xs text-muted uppercase flex items-center gap-1.5">
-            <UIcon name="i-lucide-user" /> КЕП особи
-          </div>
-
-          <div v-if="auth.user.value?.kep_serial_number" class="space-y-1">
-            <div class="flex items-center gap-1.5 text-success font-medium">
-              <UIcon name="i-lucide-check-circle" />
-              <span>Прив'язаний</span>
-            </div>
-            <div class="text-xs text-muted">
-              <span class="font-medium text-default">Суб'єкт (CN):</span> {{ auth.user.value.kep_subject_cn }}
-            </div>
-            <div class="text-xs text-muted">
-              <span class="font-medium text-default">РНОКПП (ІПН):</span> {{ auth.user.value.kep_serial_number }}
-            </div>
-            <div class="text-xs text-muted">
-              <span class="font-medium text-default">Сер. № сертифіката:</span>
-              <span class="font-mono text-[10px]">{{ auth.user.value.kep_certificate_serial }}</span>
+        <!-- Поточна прив'язка: КЕП особи + печатка юрособи — поруч горизонтально -->
+        <div class="grid grid-cols-2 gap-3">
+          <!-- КЕП особи -->
+          <div class="p-4 rounded-lg bg-neutral-50 dark:bg-neutral-800 space-y-2 border border-default text-sm">
+            <div class="font-medium text-xs text-muted uppercase flex items-center gap-1.5">
+              <UIcon name="i-lucide-user" /> КЕП особи
             </div>
 
-            <div class="pt-2">
-              <UButton size="xs" color="error" variant="soft" icon="i-lucide-trash-2" :loading="loading" @click="onUnlinkCert('esign')">
-                Відв'язати КЕП
-              </UButton>
-            </div>
-          </div>
+            <div v-if="auth.user.value?.kep_serial_number" class="space-y-1">
+              <div class="flex items-center gap-1.5 text-success font-medium">
+                <UIcon name="i-lucide-check-circle" />
+                <span>Прив'язаний</span>
+              </div>
+              <div class="text-xs text-muted">
+                <span class="font-medium text-default">Суб'єкт (CN):</span> {{ auth.user.value.kep_subject_cn }}
+              </div>
+              <div class="text-xs text-muted">
+                <span class="font-medium text-default">РНОКПП (ІПН):</span> {{ auth.user.value.kep_serial_number }}
+              </div>
+              <div class="text-xs text-muted break-all">
+                <span class="font-medium text-default">Сер. №:</span>
+                <span class="font-mono text-[10px]">{{ auth.user.value.kep_certificate_serial }}</span>
+              </div>
 
-          <div v-else class="text-muted flex items-center gap-2">
-            <UIcon name="i-lucide-info" />
-            <span>КЕП не прив'язаний. Вхід без пароля недоступний.</span>
-          </div>
-        </div>
-
-        <!-- Поточна прив'язка: печатка юрособи -->
-        <div class="p-4 rounded-lg bg-neutral-50 dark:bg-neutral-800 space-y-2 border border-default text-sm">
-          <div class="font-medium text-xs text-muted uppercase flex items-center gap-1.5">
-            <UIcon name="i-lucide-stamp" /> Печатка юрособи
-          </div>
-
-          <div v-if="auth.user.value?.organization_cert_cn" class="space-y-1">
-            <div class="flex items-center gap-1.5 text-success font-medium">
-              <UIcon name="i-lucide-check-circle" />
-              <span>Прив'язана</span>
-            </div>
-            <div class="text-xs text-muted">
-              <span class="font-medium text-default">Юрособа (CN):</span> {{ auth.user.value.organization_cert_cn }}
+              <div class="pt-2">
+                <UButton size="xs" color="error" variant="soft" icon="i-lucide-trash-2" :loading="loading" @click="onUnlinkCert('esign')">
+                  Відв'язати КЕП
+                </UButton>
+              </div>
             </div>
 
-            <div class="pt-2">
-              <UButton size="xs" color="error" variant="soft" icon="i-lucide-trash-2" :loading="loading" @click="onUnlinkCert('eseal')">
-                Відв'язати печатку
-              </UButton>
+            <div v-else class="text-muted flex items-start gap-2 text-xs leading-relaxed">
+              <UIcon name="i-lucide-info" class="flex-shrink-0 mt-0.5" />
+              <span>КЕП не прив'язаний. Вхід без пароля недоступний.</span>
             </div>
           </div>
 
-          <div v-else class="text-muted flex items-center gap-2">
-            <UIcon name="i-lucide-info" />
-            <span>Печатка не прив'язана. Накладання печатки юрособи недоступне.</span>
+          <!-- Печатка юрособи -->
+          <div class="p-4 rounded-lg bg-neutral-50 dark:bg-neutral-800 space-y-2 border border-default text-sm">
+            <div class="font-medium text-xs text-muted uppercase flex items-center gap-1.5">
+              <UIcon name="i-lucide-stamp" /> Печатка юрособи
+            </div>
+
+            <div v-if="auth.user.value?.organization_cert_cn" class="space-y-1">
+              <div class="flex items-center gap-1.5 text-success font-medium">
+                <UIcon name="i-lucide-check-circle" />
+                <span>Прив'язана</span>
+              </div>
+              <div class="text-xs text-muted break-all">
+                <span class="font-medium text-default">Юрособа (CN):</span> {{ auth.user.value.organization_cert_cn }}
+              </div>
+
+              <div class="pt-2">
+                <UButton size="xs" color="error" variant="soft" icon="i-lucide-trash-2" :loading="loading" @click="onUnlinkCert('eseal')">
+                  Відв'язати печатку
+                </UButton>
+              </div>
+            </div>
+
+            <div v-else class="text-muted flex items-start gap-2 text-xs leading-relaxed">
+              <UIcon name="i-lucide-info" class="flex-shrink-0 mt-0.5" />
+              <span>Печатка не прив'язана. Накладання печатки юрособи недоступне.</span>
+            </div>
           </div>
         </div>
 
@@ -239,27 +242,62 @@ async function onUnlinkCert(type: 'esign' | 'eseal') {
             <div id="kep-widget-parent" class="w-full h-[320px] border border-default rounded overflow-hidden" />
           </div>
 
-          <!-- Файловий ключ -->
+          <!-- Файловий ключ: КНЕДП + файл поруч, пароль окремим повним рядком -->
           <template v-else>
-            <UFormField v-if="kep.caList.value.length" label="Кваліфікований надавач (КНЕДП)">
+            <div class="grid grid-cols-2 gap-3 items-start">
+              <UFormField v-if="kep.caList.value.length" label="Кваліфікований надавач (КНЕДП)">
+                <USelect
+                  v-model="kep.caIndex.value"
+                  :items="kep.caList.value.map((c, i) => ({ label: c.title, value: i }))"
+                  class="w-full"
+                  size="sm"
+                />
+                <div class="text-[10px] text-muted mt-1 leading-snug">
+                  Виберіть КНЕДП, що видав сертифікат. Невідповідність → «Сертифікат не знайдено».
+                </div>
+              </UFormField>
+              <FileDropZone
+                accept=".dat,.pfx,.jks,.p12,.zs2"
+                hint="Файл ключа (.dat / .pfx / .jks)"
+                :file-name="kep.keyFile.value?.name"
+                class="min-w-0"
+                @file="kep.onKeyFile"
+              />
+            </div>
+
+            <!-- Контейнер з кількома ключами (jks/keystore): обрати сертифікат підпису -->
+            <UFormField v-if="kep.keyItemList.value.length > 1" label="Ключ у контейнері">
               <USelect
-                v-model="kep.caIndex.value"
-                :items="kep.caList.value.map((c, i) => ({ label: c.title, value: i }))"
+                v-model="kep.keyItemIndex.value"
+                :items="kep.keyItemList.value.map((k, i) => ({ label: k.title, value: i }))"
                 class="w-full"
                 size="sm"
               />
+              <div class="text-[10px] text-muted mt-1 leading-snug">
+                Контейнер містить кілька ключів — оберіть сертифікат для підпису.
+              </div>
             </UFormField>
-
-            <FileDropZone
-              accept=".dat,.pfx,.jks,.p12,.zs2"
-              hint="Файл ключа (.dat / .pfx / .jks)"
-              :file-name="kep.keyFile.value?.name"
-              @file="kep.onKeyFile"
-            />
           </template>
 
           <UFormField label="Пароль захисту ключа">
             <UInput v-model="kep.keyPass.value" type="password" placeholder="••••••" class="w-full" size="sm" />
+          </UFormField>
+
+          <!-- Сертифікат окремим файлом (.cer) — для тестових/офлайн ключів,
+               коли сертифікат не дотягується з КНЕДП (помилка «Сертифікат не знайдено»).
+               Для тестового ключа ДІЯ: client_diia.cer поруч з .p12 -->
+          <UFormField label="Сертифікат ключа (.cer) — якщо є окремо">
+            <FileDropZone
+              accept=".cer,.crt,.p7b"
+              hint="Сертифікат відкритого ключа (.cer)"
+              :file-name="kep.certFiles.value[0]?.name"
+              class="min-w-0"
+              @file="kep.onCertFile"
+            />
+            <div class="text-[10px] text-muted mt-1 leading-snug">
+              Додайте, якщо EUSign повідомляє «Сертифікат не знайдено (51)» —
+              сертифікат візьметься з файлу замість онлайн-запиту до КНЕДП.
+            </div>
           </UFormField>
 
           <div v-if="kep.signStep.value" class="text-xs text-muted flex items-center gap-2">
