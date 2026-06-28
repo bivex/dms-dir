@@ -4,6 +4,10 @@ import { useDashboard } from '~/composables/dashboard/useDashboard'
 const store = useDashboard()
 const confirmDeleteAll = ref(false)
 
+// Клієнтська пагінація списку документів (розбиває filteredDocs на сторінки).
+// Розмір сторінки 25 — баланс щільності й продуктивності для панелі списку.
+const { page, paged, total, totalPages, from, to } = usePagination(() => store.filteredDocs.value, 25)
+
 const moreItems = computed(() => [
   [{
     label: 'Вивантажити архів (ZIP)',
@@ -140,7 +144,7 @@ function statusMeta(status: string): { color: string; label: string; dot: string
 
     <div class="flex-1 overflow-y-auto">
       <div
-        v-for="doc in store.filteredDocs.value"
+        v-for="doc in paged"
         :key="doc.doc_id"
         class="p-3 border-b border-default cursor-pointer hover:bg-elevated transition-colors flex items-center gap-2"
         :class="{ 'bg-elevated': store.selectMode.value ? store.selectedForDelete.value.has(doc.doc_id) : store.selectedId.value === doc.doc_id }"
@@ -220,6 +224,21 @@ function statusMeta(status: string): { color: string; label: string; dot: string
       <div v-if="store.filteredDocs.value.length === 0" class="p-6 text-center text-muted text-sm">
         Немає документів
       </div>
+    </div>
+
+    <!-- Пагінація списку документів -->
+    <div v-if="total > 0" class="border-t border-default px-3 py-2 flex items-center justify-between gap-2 flex-shrink-0">
+      <div class="text-xs text-muted whitespace-nowrap">
+        {{ from }}–{{ to }} з {{ total }}
+      </div>
+      <UPagination
+        :page="page"
+        :total="total"
+        :items-per-page="25"
+        :sibling-count="1"
+        size="sm"
+        @update:page="page = $event"
+      />
     </div>
   </div>
 </template>

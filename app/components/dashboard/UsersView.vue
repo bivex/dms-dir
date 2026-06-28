@@ -15,6 +15,9 @@ const filteredUsers = computed(() => {
   )
 })
 
+// Клієнтська пагінація таблиці користувачів.
+const { page, paged, total, from, to } = usePagination(() => filteredUsers.value, 15)
+
 onMounted(() => {
   store.reloadUsers()
 })
@@ -80,7 +83,7 @@ onMounted(() => {
         </thead>
         <tbody>
           <tr
-            v-for="u in filteredUsers"
+            v-for="u in paged"
             :key="u.id"
             class="border-b border-default hover:bg-elevated/40 transition-colors"
           >
@@ -131,6 +134,21 @@ onMounted(() => {
           </tr>
         </tbody>
       </table>
+
+      <!-- Пагінація таблиці користувачів -->
+      <div v-if="total > 0" class="flex items-center justify-between gap-3 px-4 py-3 border-t border-default">
+        <div class="text-xs text-muted whitespace-nowrap">
+          {{ from }}–{{ to }} з {{ total }}
+        </div>
+        <UPagination
+          :page="page"
+          :total="total"
+          :items-per-page="15"
+          :sibling-count="1"
+          size="sm"
+          @update:page="page = $event"
+        />
+      </div>
     </UCard>
   </div>
 </template>
