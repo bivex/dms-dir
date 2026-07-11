@@ -56,7 +56,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
   const creatingDoc = ref(false)
   const form = reactive<DocForm>({
     doc_id: genDocId('Наказ'),
-    org_name: 'ДЕРЖАВНЕ ПІДПРИЄМСТВО «УКРНДНЦ»',
+    org_name: 'ДЕРЖАВНЕ ПІДПРИЄМСТВО «ДІЛОВОД»',
     subject_type: 'legal',
     doc_type: 'Наказ',
     fmt: 'pdf',
