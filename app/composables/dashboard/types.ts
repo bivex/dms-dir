@@ -113,6 +113,7 @@ export type DocForm = {
   pagination_barcode?: boolean
   control_executor_id?: number | null
   acknowledge_user_ids?: number[]
+  related_doc_id?: string | null
 }
 
 export interface CounterpartyEntry {

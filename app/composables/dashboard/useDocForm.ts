@@ -89,7 +89,8 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     approverUsers: [] as ApproverUser[],
     pagination_barcode: false,
     control_executor_id: null,
-    acknowledge_user_ids: []
+    acknowledge_user_ids: [],
+    related_doc_id: null
   })
 
   // авто-реєстрація: індекс і дата присвоюються бекендом при поданні у чергу.

@@ -39,11 +39,28 @@ const docTypeOptions = [
 const isFocused = ref(false)
 const withVisa = ref(false)
 
+const filteredJournals = computed(() => {
+  if (!store.journals.value) return []
+  if (store.isOrder.value) {
+    // Накази: тільки з префіксом ОД або назвою "наказ"
+    return store.journals.value.filter(j => 
+      j.prefix === 'ОД' || j.name.toLowerCase().includes('наказ')
+    )
+  }
+  if (form.doc_type === 'Лист') {
+    // Листи: тільки з префіксом ВИХ або назвою "вихідн"
+    return store.journals.value.filter(j => 
+      j.prefix === 'ВИХ' || j.name.toLowerCase().includes('вихідн')
+    )
+  }
+  return store.journals.value
+})
+
 const selectedJournalId = computed({
   get: () => {
     if (form.journal_id) return String(form.journal_id)
-    if (store.isOrder.value && store.journals.value && store.journals.value.length > 0) {
-      const firstId = store.journals.value[0]?.id
+    if ((store.isOrder.value || form.doc_type === 'Лист') && filteredJournals.value.length > 0) {
+      const firstId = filteredJournals.value[0]?.id
       if (firstId !== undefined) {
         form.journal_id = firstId
         return String(firstId)
@@ -71,10 +88,42 @@ const filteredOptions = computed(() => {
   )
 })
 
+const relatedDocOptions = computed(() => {
+  if (!store.docs.value) return []
+  return [
+    { label: 'Немає зв\'язку', value: '0' },
+    ...store.docs.value
+      .filter((d: any) => d.doc_id !== form.doc_id)
+      .map((d: any) => ({
+        label: `${d.reg_index ? '№' + d.reg_index + ' ' : ''}${d.title} (${d.doc_id})`,
+        value: d.doc_id
+      }))
+  ]
+})
+
+const selectedRelatedDocId = computed({
+  get: () => form.related_doc_id ? form.related_doc_id : '0',
+  set: (val: string) => {
+    form.related_doc_id = val && val !== '0' ? val : null
+  }
+})
+
 function selectCounterparty(c: any) {
   form.org_name = c.name
   form.subject_type = c.subject_type
   isFocused.value = false
+
+  // Auto-fill addressees for letters or other non-order documents
+  if (!store.isOrder.value) {
+    const lines = [c.name]
+    if (c.address) {
+      lines.push(c.address)
+    }
+    if (c.email) {
+      lines.push(`email: ${c.email}`)
+    }
+    form.addressees = lines.join('\n')
+  }
 }
 
 function getSubjectTypeLabel(type: string) {
@@ -451,6 +500,15 @@ function formatBytes(bytes: number, decimals = 2) {
         <USelect
           v-model="selectedControlExecutorId"
           :items="allUsersSelectItems"
+          class="w-full"
+        />
+      </UFormField>
+
+      <!-- Пов'язаний документ (у відповідь на / на виконання) -->
+      <UFormField label="У відповідь на / На виконання (пов'язаний документ)">
+        <USelect
+          v-model="selectedRelatedDocId"
+          :items="relatedDocOptions"
           class="w-full"
         />
       </UFormField>
