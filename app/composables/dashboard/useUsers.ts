@@ -115,11 +115,28 @@ export function useUsers(deps: {
         }
         // пароль шлемо лише якщо введений (зміна паролю)
         if (userForm.password.trim()) body.password = userForm.password.trim()
-        await apiFetch(`/users/${userEditId.value}`, {
+        const updatedUser = await apiFetch<UserEntry>(`/users/${userEditId.value}`, {
           method: 'PUT',
           body
         })
         toast.add({ title: 'Користувача оновлено успішно', color: 'success' })
+
+        // Оновлюємо поточного авторизованого користувача, якщо він змінив свій профіль
+        const auth = useAuth()
+        if (auth.user.value && auth.user.value.id === updatedUser.id) {
+          auth.user.value = {
+            ...auth.user.value,
+            name: updatedUser.name,
+            email: updatedUser.email,
+            position: updatedUser.position,
+            role: updatedUser.role,
+            phone: updatedUser.phone,
+            address: updatedUser.address
+          }
+          if (import.meta.client) {
+            localStorage.setItem('dilovod_user', JSON.stringify(auth.user.value))
+          }
+        }
       }
       userModalOpen.value = false
       await reloadUsers()

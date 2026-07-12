@@ -18,6 +18,7 @@ import { useTasks } from './useTasks'
 import { useUsers } from './useUsers'
 import { useProcesses } from './useProcesses'
 import { useImport } from './useImport'
+import { useAttachments } from './useAttachments'
 import { onMounted } from 'vue'
 
 /**
@@ -77,18 +78,36 @@ export function createDashboardStore() {
     reloadFolders: folders.reloadFolders
   })
 
+  const attachments = useAttachments({
+    token,
+    docId: documents.selectedId,
+    isLocked: formStore.isLocked
+  })
+
+  const originalSelectDoc = documents.selectDoc
+  async function selectDoc(doc: DocEntry | string) {
+    await originalSelectDoc(doc)
+    await attachments.fetchAttachments()
+  }
+
+  const originalNewDocument = documents.newDocument
+  function newDocument() {
+    originalNewDocument()
+    attachments.attachments.value = []
+  }
+
   const viewer = useDocViewer({ token, form: formStore.form })
   const scan = useScanUpload({
     token,
     refreshAll: documents.refreshAll,
-    selectDoc: documents.selectDoc
+    selectDoc
   })
   const euSign = useEuSign({
     apiFetch,
     token,
     form: formStore.form,
     signerList: formStore.signerList,
-    selectDoc: documents.selectDoc,
+    selectDoc,
     refreshAll: documents.refreshAll
   })
 
@@ -103,7 +122,7 @@ export function createDashboardStore() {
   const approvals = useApprovals({
     apiFetch,
     refreshAll: () => documents.refreshAll(),
-    selectDoc: (docId: string) => documents.selectDoc(docId)
+    selectDoc: (docId: string) => selectDoc(docId)
   })
   const tasks = useTasks({ apiFetch })
 
@@ -191,8 +210,8 @@ export function createDashboardStore() {
     listHeaderLabel: documents.listHeaderLabel,
     reloadDocs: documents.reloadDocs,
     refreshAll: documents.refreshAll,
-    selectDoc: documents.selectDoc,
-    newDocument: documents.newDocument,
+    selectDoc,
+    newDocument,
     createDoc: documents.createDoc,
     generateDoc: documents.generateDoc,
     downloadDoc: documents.downloadDoc,
@@ -374,7 +393,14 @@ export function createDashboardStore() {
     openImportModal: importStore.openImportModal,
     onFileSelected: importStore.onFileSelected,
     doImport: importStore.doImport,
-    doExport: importStore.doExport
+    doExport: importStore.doExport,
+    // attachments
+    attachments: attachments.attachments,
+    attachmentsUploading: attachments.uploading,
+    fetchAttachments: attachments.fetchAttachments,
+    uploadAttachment: attachments.uploadAttachment,
+    downloadAttachment: attachments.downloadAttachment,
+    removeAttachment: attachments.removeAttachment
   }
 }
 

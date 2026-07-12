@@ -125,3 +125,13 @@ export interface CounterpartyEntry {
 }
 
 export type UiColor = 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
+
+export interface AttachmentMeta {
+  id: number
+  order_index: number
+  original_filename: string
+  stored_filename: string
+  mime: string
+  size: number
+  created_at: string
+}

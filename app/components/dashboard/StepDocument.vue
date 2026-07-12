@@ -141,6 +141,14 @@ function toggleSignerType(index: number) {
     s.full_name = form.org_name.trim()
   }
 }
+function formatBytes(bytes: number, decimals = 2) {
+  if (!bytes) return '0 Bytes'
+  const k = 1024
+  const dm = decimals < 0 ? 0 : decimals
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
+}
 </script>
 
 <template>
@@ -448,6 +456,59 @@ email: example@mail.com" class="w-full" />
             </div>
           </div>
           <div v-else class="text-xs text-muted">Підписантів не додано.</div>
+        </div>
+      </UFormField>
+
+      <!-- Додатки до документа -->
+      <UFormField label="Додатки">
+        <div class="space-y-3 w-full">
+          <!-- File Drop Zone for uploading attachments -->
+          <div v-if="!store.isLocked.value">
+            <FileDropZone
+              accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp,.webp,.docx,.xlsx,.doc,.xls"
+              :loading="store.attachmentsUploading.value"
+              @select="store.uploadAttachment"
+            />
+          </div>
+
+          <!-- Attachments list -->
+          <div v-if="store.attachments.value.length > 0" class="divide-y divide-border border rounded-md">
+            <div
+              v-for="att in store.attachments.value"
+              :key="att.id"
+              class="flex items-center justify-between p-2 text-sm"
+            >
+              <div class="flex items-center gap-2 overflow-hidden">
+                <UIcon name="i-lucide-file-text" class="text-primary flex-shrink-0 w-4 h-4" />
+                <span class="truncate font-medium" :title="att.original_filename">
+                  {{ att.original_filename }}
+                </span>
+                <span class="text-xs text-muted flex-shrink-0">
+                  ({{ formatBytes(att.size) }})
+                </span>
+              </div>
+              <div class="flex items-center gap-1">
+                <UButton
+                  icon="i-lucide-download"
+                  size="xs"
+                  color="neutral"
+                  variant="ghost"
+                  title="Завантажити"
+                  @click="store.downloadAttachment(att)"
+                />
+                <UButton
+                  v-if="!store.isLocked.value"
+                  icon="i-lucide-trash-2"
+                  size="xs"
+                  color="error"
+                  variant="ghost"
+                  title="Видалити"
+                  @click="store.removeAttachment(att.id)"
+                />
+              </div>
+            </div>
+          </div>
+          <div v-else class="text-xs text-muted">Додатків не додано.</div>
         </div>
       </UFormField>
 
