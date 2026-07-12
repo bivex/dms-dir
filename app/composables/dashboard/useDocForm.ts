@@ -67,6 +67,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     date_text: '',
     reg_index: '',
     body: '',
+    addressees: '',
     signers: '',
     signerUsers: [] as SignerUser[],
     journal_id: null,
@@ -93,7 +94,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
         form.doc_id = genDocId(newType)
       }
       
-      const templates: Record<string, { title: string, body: string, subject_type?: 'legal' | 'fop' | 'person' }> = {
+      const templates: Record<string, { title: string, body: string, subject_type?: 'legal' | 'fop' | 'person', addressees?: string }> = {
         'Наказ про відпустку': {
           title: 'Про надання щорічної відпустки',
           body: 'НАКАЗУЮ:\n1. Надати [ПІБ] щорічну основну відпустку тривалістю 14 календарних днів з [Дата] по [Дата] за робочий період з [Дата] по [Дата].\n2. Головному бухгалтеру провести розрахунок та виплату відпускних.',
@@ -107,17 +108,20 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
         'Заява': {
           title: 'Заява про надання матеріальної допомоги',
           body: 'Прошу надати мені матеріальну допомогу у зв\'язку зі скрутним матеріальним становищем (на лікування / за сімейними обставинами).',
-          subject_type: 'person'
+          subject_type: 'person',
+          addressees: 'Директору ДП «ДІЛОВОД»'
         },
         'Заява про надання матеріальної допомоги': {
           title: 'Заява про надання матеріальної допомоги',
           body: 'Прошу надати мені матеріальну допомогу у зв\'язку зі скрутним матеріальним становищем (на лікування / за сімейними обставинами).',
-          subject_type: 'person'
+          subject_type: 'person',
+          addressees: 'Директору ДП «ДІЛОВОД»'
         },
         'Скарга на дії правоохоронців': {
           title: 'Скарга на неправомірні дії (бездіяльність) службових осіб правоохоронних органів',
           body: 'Звертаюся до Вас із скаргою на неправомірні дії та бездіяльність працівників правоохоронних органів.\nПід час проведення процесуальних дій [Дата/Місце] було допущено істотні порушення моїх законних прав, що виявилося у [Опис неправомірних дій або бездіяльності].\nПрошу провести службове розслідування за вказаними фактами, вжити заходів дисциплінарного реагування та повідомити мене про результати розгляду.',
-          subject_type: 'person'
+          subject_type: 'person',
+          addressees: 'Генеральному прокурору\nвул. Різницька, 13/15\nм. Київ, 01011'
         },
         'Лист': {
           title: 'Щодо співпраці та надання інформації',
@@ -131,6 +135,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
         if (!form.title) form.title = tpl.title
         if (!form.body) form.body = tpl.body
         if (tpl.subject_type) form.subject_type = tpl.subject_type
+        if (tpl.addressees && !form.addressees) form.addressees = tpl.addressees
         if (tpl.subject_type === 'person') {
           if (form.org_name === 'ДЕРЖАВНЕ ПІДПРИЄМСТВО «ДІЛОВОД»' || !form.org_name) {
             form.org_name = currentUser.value ? `Гр. ${currentUser.value.name}` : ''
@@ -247,6 +252,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       date_text: form.date_text,
       reg_index: form.reg_index,
       body: form.body.split('\n').filter(Boolean),
+      addressees: form.addressees ? form.addressees.split('\n').filter(Boolean) : [],
       signers: signerLines,
       journal_id: form.journal_id ? Number(form.journal_id) : null,
       approval_type: form.approval_type,
@@ -261,6 +267,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     form.title = ''
     form.reg_index = ''
     form.body = ''
+    form.addressees = ''
     form.signers = ''
     form.signerUsers = []
     form.journal_id = null
@@ -318,6 +325,8 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       form.pagination_barcode = !!cj.pagination_barcode
       const b = cj.body
       form.body = Array.isArray(b) ? b.join('\n') : String(b ?? '')
+      const addrs = cj.addressees
+      form.addressees = Array.isArray(addrs) ? addrs.join('\n') : String(addrs ?? '')
     }
     const fr = full as Record<string, unknown>
     if (fr.reg_index) form.reg_index = String(fr.reg_index)

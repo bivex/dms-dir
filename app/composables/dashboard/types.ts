@@ -100,6 +100,7 @@ export type DocForm = {
   date_text: string
   reg_index: string
   body: string
+  addressees: string
   signers: string
   signerUsers: SignerUser[]
   journal_id?: number | null
