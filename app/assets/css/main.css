@@ -5,6 +5,14 @@
   --font-sans: 'Public Sans', sans-serif;
 }
 
+/* Глобальне згладжування та лігатури для чіткішого тексту */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern", "liga", "calt";
+}
+
 .dark {
   --ui-bg: var(--ui-color-neutral-950);
   --ui-bg-muted: var(--ui-color-neutral-900);
@@ -29,6 +37,9 @@
   --ui-border-muted: #d8c8a8;
   --ui-border-accented: #c4b08a;
   --ui-border-inverted: #3b2f1e;
+  --reader-paper: #fbf3e2;
+  --reader-ink: #3b2f1e;
+  --reader-border: #d8c8a8;
 }
 
 /* Контрастна — доступність, погане освітлення */
@@ -48,6 +59,9 @@
   --ui-border-muted: #888888;
   --ui-border-accented: #ffffff;
   --ui-border-inverted: #ffffff;
+  --reader-paper: #000000;
+  --reader-ink: #ffffff;
+  --reader-border: #ffffff;
 }
 
 /* Офісна (Low-Blue) — спокійний сіро-блакитний */
@@ -67,6 +81,9 @@
   --ui-border-muted: #d3dce5;
   --ui-border-accented: #bcc8d4;
   --ui-border-inverted: #1e2a36;
+  --reader-paper: #ffffff;
+  --reader-ink: #1e2a36;
+  --reader-border: #d3dce5;
 }
 
 /* Монохромна (Slate) — професійна сіра гама */
