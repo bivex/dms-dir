@@ -64,6 +64,7 @@ export function createDashboardStore() {
 
   const documents = useDocuments({
     apiFetch,
+    token,
     favoritesSet: favorites.favorites,
     removeFromFavorites: favorites.removeFromFavorites,
     folders: folders.folders,

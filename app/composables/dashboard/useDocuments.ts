@@ -8,6 +8,7 @@ import type { DocFormStore } from './useDocForm'
  */
 export function useDocuments(deps: {
   apiFetch: ReturnType<typeof useAuth>['apiFetch']
+  token: Ref<string | null>
   favoritesSet: Ref<Set<string>>
   removeFromFavorites: (docId: string) => void
   folders: Ref<{ id: number; name: string; color?: string | null; doc_count?: number }[]>
@@ -23,7 +24,7 @@ export function useDocuments(deps: {
 }) {
   const toast = useToast()
   const {
-    apiFetch, favoritesSet, removeFromFavorites, folders,
+    apiFetch, token, favoritesSet, removeFromFavorites, folders,
     docs, activeCategory, searchQuery,
     activeFolderId, selectedDay, docDayKey, selectedDayLabel,
     formStore, reloadFolders
@@ -238,8 +239,13 @@ export function useDocuments(deps: {
   async function downloadMergedPdf(withVisa = false) {
     try {
       const base = `${useRuntimeConfig().public.apiBase}/documents/${form.doc_id}/merged-pdf`
-      const url = withVisa ? `${base}?visa=true` : base
-      window.open(url, '_blank')
+      // new-tab open не передає Authorization header → токен у query
+      // (_current_user на бекенді приймає ?token=). visa=true лишаємо для сумісності.
+      const params = new URLSearchParams()
+      if (withVisa) params.set('visa', 'true')
+      if (token.value) params.set('token', token.value)
+      const qs = params.toString()
+      window.open(qs ? `${base}?${qs}` : base, '_blank')
     }
     catch (e: unknown) {
       toast.add({ title: 'Помилка завантаження обʼєднаного PDF', description: String(e), color: 'error' })

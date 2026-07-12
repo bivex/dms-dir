@@ -40,7 +40,11 @@ export function useDocViewer(deps: {
         try {
           const apiBase = useRuntimeConfig().public.apiBase
           const base = `${apiBase}/documents/${docId}/merged-pdf`
-          window.open(withVisa ? `${base}?visa=true` : base, '_blank')
+          const params = new URLSearchParams()
+          if (withVisa) params.set('visa', 'true')
+          if (token.value) params.set('token', token.value)
+          const qs = params.toString()
+          window.open(qs ? `${base}?${qs}` : base, '_blank')
         } catch (e) {
           toast.add({ title: 'Помилка завантаження', description: String(e), color: 'error' })
         }
