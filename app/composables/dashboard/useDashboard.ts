@@ -96,6 +96,27 @@ export function createDashboardStore() {
     attachments.attachments.value = []
   }
 
+  // Auto-save the document first if it hasn't been created yet, then upload
+  const uploadingAttachment = ref(false)
+  async function uploadAttachment(file: File) {
+    uploadingAttachment.value = true
+    try {
+      if (!documents.selectedId.value) {
+        // Document not saved yet — save it first, then upload
+        await documents.createDoc()
+        await nextTick()
+        if (!documents.selectedId.value) {
+          // createDoc failed (toast already shown)
+          return
+        }
+        await attachments.fetchAttachments()
+      }
+      await attachments.uploadAttachment(file)
+    } finally {
+      uploadingAttachment.value = false
+    }
+  }
+
   const viewer = useDocViewer({ token, form: formStore.form })
   const scan = useScanUpload({
     token,
@@ -399,9 +420,9 @@ export function createDashboardStore() {
     doExport: importStore.doExport,
     // attachments
     attachments: attachments.attachments,
-    attachmentsUploading: attachments.uploading,
+    attachmentsUploading: uploadingAttachment,
     fetchAttachments: attachments.fetchAttachments,
-    uploadAttachment: attachments.uploadAttachment,
+    uploadAttachment,
     downloadAttachment: attachments.downloadAttachment,
     removeAttachment: attachments.removeAttachment
   }
