@@ -111,6 +111,8 @@ export type DocForm = {
   approval_type?: 'sequential' | 'parallel'
   approverUsers: ApproverUser[]
   pagination_barcode?: boolean
+  control_executor_id?: number | null
+  acknowledge_user_ids?: number[]
 }
 
 export interface CounterpartyEntry {

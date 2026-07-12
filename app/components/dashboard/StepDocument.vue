@@ -40,7 +40,17 @@ const isFocused = ref(false)
 const withVisa = ref(false)
 
 const selectedJournalId = computed({
-  get: () => form.journal_id ? String(form.journal_id) : '0',
+  get: () => {
+    if (form.journal_id) return String(form.journal_id)
+    if (store.isOrder.value && store.journals.value && store.journals.value.length > 0) {
+      const firstId = store.journals.value[0]?.id
+      if (firstId !== undefined) {
+        form.journal_id = firstId
+        return String(firstId)
+      }
+    }
+    return '0'
+  },
   set: (val: string) => {
     form.journal_id = val && val !== '0' ? Number(val) : null
   }
@@ -142,6 +152,84 @@ function toggleSignerType(index: number) {
     s.full_name = form.org_name.trim()
   }
 }
+
+const allUsersSelectItems = computed(() => [
+  { label: 'Не встановлено / за собою', value: '0' },
+  ...store.users.value.map((u: any) => ({
+    label: `${u.name}${u.position ? ' — ' + u.position : ''}`,
+    value: String(u.id)
+  }))
+])
+
+const selectedControlExecutorId = computed({
+  get: () => form.control_executor_id ? String(form.control_executor_id) : '0',
+  set: (val: string) => {
+    form.control_executor_id = val && val !== '0' ? Number(val) : null
+  }
+})
+
+const availableAcknowledgeUsers = computed(() =>
+  store.users.value
+    .filter((u: any) => !(form.acknowledge_user_ids || []).includes(u.id))
+    .map((u: any) => ({
+      label: `${u.name}${u.position ? ' — ' + u.position : ''} · ${u.email}`,
+      value: u.id
+    }))
+)
+
+function addAcknowledgeUser(userId: number | string) {
+  const id = Number(userId)
+  if (!form.acknowledge_user_ids) {
+    form.acknowledge_user_ids = []
+  }
+  if (!form.acknowledge_user_ids.includes(id)) {
+    form.acknowledge_user_ids.push(id)
+  }
+}
+
+function removeAcknowledgeUser(id: number) {
+  if (form.acknowledge_user_ids) {
+    form.acknowledge_user_ids = form.acknowledge_user_ids.filter(x => x !== id)
+  }
+}
+
+function getUserInfo(id: number) {
+  return store.users.value.find((x: any) => x.id === id) || { name: 'Невідомий', position: '' }
+}
+
+function injectTemplate(type: 'відпустка' | 'прийняття') {
+  if (type === 'відпустка') {
+    form.title = 'Про надання щорічної відпустки'
+    form.body = 'НАКАЗУЮ:\n1. Надати [ПІБ] щорічну основну відпустку тривалістю 14 календарних днів з [Дата] по [Дата] за робочий період з [Дата] по [Дата].\n2. Головному бухгалтеру провести розрахунок та виплату відпускних.\n3. Контроль за виконанням наказу залишаю за собою.'
+  } else if (type === 'прийняття') {
+    form.title = 'Про прийняття на роботу'
+    form.body = 'НАКАЗУЮ:\n1. Прийняти [ПІБ] на роботу з [Дата] на посаду [Посада].\n2. Встановити посадовий оклад згідно зі штатним розкладом.\n3. Контроль за виконанням наказу покласти на [ПІБ].'
+  }
+}
+
+function applyStandardRoute(type: 'basic' | 'hr') {
+  form.approverUsers = []
+  if (type === 'basic') {
+    const lawyer = store.users.value.find((u: any) => u.name.includes('Бойко') || u.position?.toLowerCase().includes('юрист'))
+    if (lawyer) {
+      form.approverUsers.push({ user_id: lawyer.id, full_name: lawyer.name, position: lawyer.position })
+    }
+    const accountant = store.users.value.find((u: any) => u.name.includes('Бондаренко') || u.position?.toLowerCase().includes('бухгалтер'))
+    if (accountant) {
+      form.approverUsers.push({ user_id: accountant.id, full_name: accountant.name, position: accountant.position })
+    }
+  } else if (type === 'hr') {
+    const hr = store.users.value.find((u: any) => u.name.includes('Кузьменко') || u.position?.toLowerCase().includes('кадр'))
+    if (hr) {
+      form.approverUsers.push({ user_id: hr.id, full_name: hr.name, position: hr.position })
+    }
+    const lawyer = store.users.value.find((u: any) => u.name.includes('Бойко'))
+    if (lawyer) {
+      form.approverUsers.push({ user_id: lawyer.id, full_name: lawyer.name, position: lawyer.position })
+    }
+  }
+}
+
 function formatBytes(bytes: number, decimals = 2) {
   if (!bytes) return '0 Bytes'
   const k = 1024
@@ -299,10 +387,12 @@ function formatBytes(bytes: number, decimals = 2) {
         <UFormField label="Реєстраційний журнал">
           <USelect
             v-model="selectedJournalId"
-            :items="[
-              { label: 'Без журналу', value: '0' },
-              ...store.journals.value.map(j => ({ label: `${j.name} (${j.prefix})`, value: String(j.id) }))
-            ]"
+            :items="store.isOrder.value
+              ? store.journals.value.map(j => ({ label: `${j.name} (${j.prefix})`, value: String(j.id) }))
+              : [
+                  { label: 'Без журналу', value: '0' },
+                  ...store.journals.value.map(j => ({ label: `${j.name} (${j.prefix})`, value: String(j.id) }))
+                ]"
             class="w-full"
           />
         </UFormField>
@@ -355,6 +445,15 @@ function formatBytes(bytes: number, decimals = 2) {
       <UFormField label="Заголовок до тексту" help="Про що документ (напр. «Про надання відпустки»). Не дублюйте вид документа.">
         <UInput v-model="form.title" placeholder="Про що цей документ…" class="w-full" />
       </UFormField>
+
+      <!-- Контроль за виконанням (для наказів) -->
+      <UFormField v-if="store.isOrder.value" label="Контроль за виконанням наказу покласти на:">
+        <USelect
+          v-model="selectedControlExecutorId"
+          :items="allUsersSelectItems"
+          class="w-full"
+        />
+      </UFormField>
       <UFormField label="Дата реєстрації" :help="store.autoRegister.value ? 'авто при поданні' : 'введіть вручну'">
         <UInput
           v-model="form.date_text"
@@ -381,11 +480,37 @@ function formatBytes(bytes: number, decimals = 2) {
         <UIcon name="i-lucide-scan-line" class="text-primary flex-shrink-0" />
         Скан-копія: оригіналом є завантажений файл. Текст не редагується — документ лише підписують КЕП.
       </div>
-      <UFormField v-else label="Текст (кожен абзац — з нового рядка)">
-        <UTextarea v-model="form.body" :rows="5" class="w-full" />
+      <UFormField v-else>
+        <template #label>
+          <div class="flex items-center justify-between w-full">
+            <span>Текст (кожен абзац — з нового рядка)</span>
+            <div v-if="store.isOrder.value" class="flex gap-1.5">
+              <UButton
+                size="xs"
+                variant="subtle"
+                color="primary"
+                icon="i-lucide-file-text"
+                @click="injectTemplate('відпустка')"
+              >
+                Шаблон: Відпустка
+              </UButton>
+              <UButton
+                size="xs"
+                variant="subtle"
+                color="primary"
+                icon="i-lucide-file-text"
+                @click="injectTemplate('прийняття')"
+              >
+                Шаблон: Прийняття
+              </UButton>
+            </div>
+          </div>
+        </template>
+        <UTextarea v-model="form.body" :rows="8" class="w-full" />
       </UFormField>
 
       <UFormField
+        v-if="!store.isOrder.value"
         label="Адресат (кому)"
         help="Посада, ПІБ та адреса одержувача — кожна деталь з нового рядка. Виводиться у правому верхньому куті бланка."
       >
@@ -406,7 +531,32 @@ function formatBytes(bytes: number, decimals = 2) {
 email: example@mail.com" class="w-full" />
       </UFormField>
 
-      <UFormField label="Погоджувачі (із користувачів системи)">
+      <UFormField>
+        <template #label>
+          <div class="flex items-center justify-between w-full">
+            <span>Погоджувачі (із користувачів системи)</span>
+            <div v-if="store.isOrder.value" class="flex gap-1.5">
+              <UButton
+                size="xs"
+                variant="subtle"
+                color="neutral"
+                icon="i-lucide-route"
+                @click="applyStandardRoute('basic')"
+              >
+                Типовий: Юрист + Бухгалтер
+              </UButton>
+              <UButton
+                size="xs"
+                variant="subtle"
+                color="neutral"
+                icon="i-lucide-route"
+                @click="applyStandardRoute('hr')"
+              >
+                Типовий: Кадри + Юрист
+              </UButton>
+            </div>
+          </div>
+        </template>
         <div class="space-y-2 w-full">
           <USelect
             :model-value="undefined"
@@ -490,6 +640,40 @@ email: example@mail.com" class="w-full" />
             </div>
           </div>
           <div v-else class="text-xs text-muted">Підписантів не додано.</div>
+        </div>
+      </UFormField>
+
+      <!-- Аркуш ознайомлення (для наказів) -->
+      <UFormField v-if="store.isOrder.value" label="Аркуш ознайомлення (Розсилка)">
+        <div class="space-y-2 w-full">
+          <USelect
+            :model-value="undefined"
+            :items="availableAcknowledgeUsers"
+            placeholder="Оберіть користувача для ознайомлення…"
+            class="w-full"
+            @update:model-value="addAcknowledgeUser"
+          />
+          <div v-if="form.acknowledge_user_ids && form.acknowledge_user_ids.length" class="space-y-1">
+            <div
+              v-for="id in form.acknowledge_user_ids"
+              :key="id"
+              class="flex items-center gap-2 p-2 rounded border border-default bg-default/5 text-sm"
+            >
+              <div class="flex-1 min-w-0">
+                <div class="font-medium truncate">{{ getUserInfo(id).name }}</div>
+                <div class="text-xs text-muted truncate">{{ getUserInfo(id).position || 'Посада не вказана' }}</div>
+              </div>
+              <UButton
+                icon="i-lucide-x"
+                size="xs"
+                color="error"
+                variant="ghost"
+                title="Прибрати"
+                @click="removeAcknowledgeUser(id)"
+              />
+            </div>
+          </div>
+          <div v-else class="text-xs text-muted">Список ознайомлення порожній.</div>
         </div>
       </UFormField>
 

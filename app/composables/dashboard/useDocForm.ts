@@ -87,7 +87,9 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     journal_id: null,
     approval_type: 'sequential',
     approverUsers: [] as ApproverUser[],
-    pagination_barcode: false
+    pagination_barcode: false,
+    control_executor_id: null,
+    acknowledge_user_ids: []
   })
 
   // авто-реєстрація: індекс і дата присвоюються бекендом при поданні у чергу.
@@ -199,18 +201,25 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
   const showFindings = ref(true)
   const showLegalDetails = ref(false)
 
+  const isOrder = computed(() => !!form.doc_type?.startsWith('Наказ'))
+
   // --- wizard computed ---
-  const stepperItems = computed<StepperItem[]>(() => [
-    { title: 'Документ', description: 'картка та реквізити', icon: 'i-lucide-file-text', value: 'document' },
-    { title: 'Перевірка', description: 'ДСТУ 4163 + НПА', icon: 'i-lucide-clipboard-check', value: 'validation' },
-    { title: 'Погодження', description: 'візування та лист', icon: 'i-lucide-users', value: 'approval' },
-    { title: 'Підписання', description: 'черга та КЕП', icon: 'i-lucide-pen-tool', value: 'signing' },
-    { title: 'Відправлення', description: 'ASiC-E контейнер', icon: 'i-lucide-send', value: 'delivery' }
-  ])
+  const stepperItems = computed<StepperItem[]>(() => {
+    const steps: StepperItem[] = [
+      { title: 'Документ', description: 'картка та реквізити', icon: 'i-lucide-file-text', value: 'document' },
+      { title: 'Перевірка', description: 'ДСТУ 4163 + НПА', icon: 'i-lucide-clipboard-check', value: 'validation' },
+      { title: 'Погодження', description: 'візування та лист', icon: 'i-lucide-users', value: 'approval' },
+      { title: 'Підписання', description: 'черга та КЕП', icon: 'i-lucide-pen-tool', value: 'signing' }
+    ]
+    if (!isOrder.value) {
+      steps.push({ title: 'Відправлення', description: 'ASiC-E контейнер', icon: 'i-lucide-send', value: 'delivery' })
+    }
+    return steps
+  })
 
   const activeStepIndex = computed(() => {
     const st = docStatus.value
-    if (st === 'signed') return 4
+    if (st === 'signed') return isOrder.value ? 3 : 4
     if (signerList.value.length > 0 || st === 'pending_signatures' || st === 'rejected') return 3
     if (st === 'pending_approval') return 2
     if (report.value || st === 'generated') return 1
@@ -480,6 +489,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     submitting,
     showFindings,
     showLegalDetails,
+    isOrder,
     stepperItems,
     activeStepIndex,
     statusBadge,

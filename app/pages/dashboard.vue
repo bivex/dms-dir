@@ -70,7 +70,7 @@ onMounted(async () => {
         <DashboardStepApproval />
         <DashboardStepSigning />
         <DashboardStepResolutions v-if="store.docStatus.value === 'signed'" />
-        <DashboardStepDelivery />
+        <DashboardStepDelivery v-if="!store.isOrder.value" />
       </div>
     </div>
 

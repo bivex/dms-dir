@@ -202,6 +202,7 @@ export function createDashboardStore() {
     approverList: formStore.approverList,
     showFindings: formStore.showFindings,
     showLegalDetails: formStore.showLegalDetails,
+    isOrder: formStore.isOrder,
     stepperItems: formStore.stepperItems,
     activeStepIndex: formStore.activeStepIndex,
     statusBadge: formStore.statusBadge,
