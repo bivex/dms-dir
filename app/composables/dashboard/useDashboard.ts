@@ -215,6 +215,7 @@ export function createDashboardStore() {
     createDoc: documents.createDoc,
     generateDoc: documents.generateDoc,
     downloadDoc: documents.downloadDoc,
+    downloadMergedPdf: documents.downloadMergedPdf,
     deleteDoc: documents.deleteDoc,
     toggleSelectMode: documents.toggleSelectMode,
     toggleForDelete: documents.toggleForDelete,

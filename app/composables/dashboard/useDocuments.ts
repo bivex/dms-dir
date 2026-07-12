@@ -235,6 +235,16 @@ export function useDocuments(deps: {
     }
   }
 
+  async function downloadMergedPdf() {
+    try {
+      const url = `${useRuntimeConfig().public.apiBase}/documents/${form.doc_id}/merged-pdf`
+      window.open(url, '_blank')
+    }
+    catch (e: unknown) {
+      toast.add({ title: 'Помилка завантаження обʼєднаного PDF', description: String(e), color: 'error' })
+    }
+  }
+
   async function deleteDoc() {
     if (!selectedId.value) return
     try {
@@ -361,6 +371,7 @@ export function useDocuments(deps: {
     createDoc,
     generateDoc,
     downloadDoc,
+    downloadMergedPdf,
     deleteDoc,
     toggleSelectMode,
     toggleForDelete,

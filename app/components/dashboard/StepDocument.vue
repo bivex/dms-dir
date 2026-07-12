@@ -184,6 +184,17 @@ function formatBytes(bytes: number, decimals = 2) {
       <UButton icon="i-lucide-download" variant="ghost" color="neutral" size="xs" @click="store.downloadDoc()">
         Завантажити
       </UButton>
+      <UButton
+        v-if="store.attachments.length > 0"
+        icon="i-lucide-file-stack"
+        variant="ghost"
+        color="neutral"
+        size="xs"
+        title="Завантажити обʼєднаний PDF (документ + додатки з маркуванням)"
+        @click="store.downloadMergedPdf()"
+      >
+        Завантажити з додатками
+      </UButton>
       <UDropdownMenu v-if="store.selectedId.value" :items="store.moveToFolderItems.value" :ui="{ content: 'w-52' }">
         <UButton icon="i-lucide-folder" variant="ghost" color="neutral" size="xs">
           <span
