@@ -181,6 +181,17 @@ function formatBytes(bytes: number, decimals = 2) {
       <UButton icon="i-lucide-eye" variant="ghost" color="neutral" size="xs" @click="store.openViewer()">
         Переглянути
       </UButton>
+      <UButton
+        v-if="store.attachments.length > 0"
+        icon="i-lucide-eye"
+        variant="ghost"
+        color="neutral"
+        size="xs"
+        title="Переглянути обʼєднаний PDF (документ + додатки з маркуванням)"
+        @click="store.openViewer({ merged: true })"
+      >
+        Переглянути з додатками
+      </UButton>
       <UButton icon="i-lucide-download" variant="ghost" color="neutral" size="xs" @click="store.downloadDoc()">
         Завантажити
       </UButton>

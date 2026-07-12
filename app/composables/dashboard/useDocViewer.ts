@@ -20,20 +20,37 @@ export function useDocViewer(deps: {
   const viewerTitle = ref('')
   const viewerDownloadAction = ref<(() => void) | null>(null)
 
-  async function openViewer(target?: { doc_id: string, title?: string, fmt?: string }) {
-    viewerDownloadAction.value = null
+  async function openViewer(target?: { doc_id: string, title?: string, fmt?: string, merged?: boolean }) {
     const docId = target?.doc_id ?? form.doc_id
     const docTitle = target?.title ?? form.title ?? docId
     const docFmt = target?.fmt ?? form.fmt
+    const isMerged = target?.merged ?? false
+
     viewerLoading.value = true
     viewerOpen.value = true
-    viewerTitle.value = docTitle || docId
-    viewerMode.value = docFmt === 'docx' ? 'docx' : 'pdf'
+    viewerTitle.value = isMerged ? `${docTitle || docId} (з додатками)` : (docTitle || docId)
+    viewerMode.value = isMerged ? 'pdf' : (docFmt === 'docx' ? 'docx' : 'pdf')
+    
     if (viewerUrl.value) { URL.revokeObjectURL(viewerUrl.value); viewerUrl.value = '' }
     viewerHtml.value = ''
+
+    if (isMerged) {
+      viewerDownloadAction.value = async () => {
+        try {
+          const apiBase = useRuntimeConfig().public.apiBase
+          window.open(`${apiBase}/documents/${docId}/merged-pdf`, '_blank')
+        } catch (e) {
+          toast.add({ title: 'Помилка завантаження', description: String(e), color: 'error' })
+        }
+      }
+    } else {
+      viewerDownloadAction.value = null
+    }
+
     try {
       const apiBase = useRuntimeConfig().public.apiBase
-      const res = await fetch(`${apiBase}/documents/${docId}/download`, {
+      const endpoint = isMerged ? `/documents/${docId}/merged-pdf` : `/documents/${docId}/download`
+      const res = await fetch(`${apiBase}${endpoint}`, {
         headers: token.value ? { Authorization: `Bearer ${token.value}` } : {}
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
