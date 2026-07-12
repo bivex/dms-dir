@@ -20,10 +20,10 @@ const store = useDashboard()
               variant="ghost"
               size="xs"
               title="Завантажити"
-              @click="store.downloadDoc()"
+              @click="store.viewerDownloadAction.value ? store.viewerDownloadAction.value() : store.downloadDoc()"
             />
             <UButton
-              v-if="store.viewerMode.value === 'pdf'"
+              v-if="store.viewerMode.value === 'pdf' || store.viewerMode.value === 'image'"
               icon="i-lucide-external-link"
               variant="ghost"
               size="xs"
@@ -51,6 +51,22 @@ const store = useDashboard()
             class="docx-preview mx-auto my-6 max-w-3xl bg-white text-black p-12 shadow-lg rounded"
             v-html="store.viewerHtml.value"
           />
+          <!-- Зображення -->
+          <div
+            v-else-if="store.viewerMode.value === 'image' && store.viewerUrl.value"
+            class="w-full h-full flex items-center justify-center p-4 bg-zinc-900"
+          >
+            <img :src="store.viewerUrl.value" class="max-w-full max-h-full object-contain" alt="Зображення" />
+          </div>
+          <!-- Формат без прев'ю -->
+          <div
+            v-else-if="store.viewerMode.value === 'unsupported'"
+            class="w-full h-full flex flex-col items-center justify-center p-6 text-center text-muted"
+          >
+            <UIcon name="i-lucide-alert-triangle" class="text-3xl text-warning mb-2" />
+            <p class="font-medium text-sm text-foreground">Попередній перегляд цього формату не підтримується</p>
+            <p class="text-xs text-muted-foreground mt-1">Ви можете завантажити цей додаток за допомогою кнопки завантаження зверху.</p>
+          </div>
         </div>
       </div>
     </template>

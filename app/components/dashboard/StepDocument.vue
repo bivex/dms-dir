@@ -489,6 +489,14 @@ email: example@mail.com" class="w-full" />
               </div>
               <div class="flex items-center gap-1">
                 <UButton
+                  icon="i-lucide-eye"
+                  size="xs"
+                  color="neutral"
+                  variant="ghost"
+                  title="Переглянути"
+                  @click="store.openAttachmentViewer(form.doc_id, att)"
+                />
+                <UButton
                   icon="i-lucide-download"
                   size="xs"
                   color="neutral"
