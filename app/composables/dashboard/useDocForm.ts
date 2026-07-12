@@ -54,6 +54,7 @@ function genDocId(docType?: string): string {
 
 export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
   const toast = useToast()
+  const { user: currentUser } = useAuth()
 
   const creatingDoc = ref(false)
   const form = reactive<DocForm>({
@@ -130,6 +131,11 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
         if (!form.title) form.title = tpl.title
         if (!form.body) form.body = tpl.body
         if (tpl.subject_type) form.subject_type = tpl.subject_type
+        if (tpl.subject_type === 'person') {
+          if (form.org_name === 'ДЕРЖАВНЕ ПІДПРИЄМСТВО «ДІЛОВОД»' || !form.org_name) {
+            form.org_name = currentUser.value ? `Гр. ${currentUser.value.name}` : ''
+          }
+        }
       }
     }
   })
