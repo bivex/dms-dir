@@ -343,6 +343,16 @@ function toggleSignerType(index: number) {
         <UTextarea v-model="form.body" :rows="5" class="w-full" />
       </UFormField>
 
+      <UFormField
+        label="Адресат (кому)"
+        help="Посада, ПІБ та адреса одержувача — кожна деталь з нового рядка. Виводиться у правому верхньому куті бланка."
+      >
+        <UTextarea v-model="form.addressees" :rows="3" placeholder="Наприклад:
+Генеральному прокурору
+вул. Різницька, 13/15
+м. Київ, 01011" class="w-full" />
+      </UFormField>
+
       <UFormField label="Погоджувачі (із користувачів системи)">
         <div class="space-y-2 w-full">
           <USelect
