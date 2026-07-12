@@ -37,6 +37,7 @@ const docTypeOptions = [
 ]
 
 const isFocused = ref(false)
+const withVisa = ref(false)
 
 const selectedJournalId = computed({
   get: () => form.journal_id ? String(form.journal_id) : '0',
@@ -188,7 +189,7 @@ function formatBytes(bytes: number, decimals = 2) {
         color="neutral"
         size="xs"
         title="Переглянути обʼєднаний PDF (документ + додатки з маркуванням)"
-        @click="store.openViewer({ merged: true })"
+        @click="store.openViewer({ merged: true, visa: withVisa })"
       >
         Переглянути з додатками
       </UButton>
@@ -202,9 +203,20 @@ function formatBytes(bytes: number, decimals = 2) {
         color="neutral"
         size="xs"
         title="Завантажити обʼєднаний PDF (документ + додатки з маркуванням)"
-        @click="store.downloadMergedPdf()"
+        @click="store.downloadMergedPdf(withVisa)"
       >
         Завантажити з додатками
+      </UButton>
+      <UButton
+        v-if="store.attachments.value.length > 0"
+        :icon="withVisa ? 'i-lucide-stamp' : 'i-lucide-stamp'"
+        :variant="withVisa ? 'soft' : 'ghost'"
+        :color="withVisa ? 'primary' : 'neutral'"
+        size="xs"
+        :title="withVisa ? 'Вимкнути штамп-візу' : 'Увімкнути штамп-візу у PDF'"
+        @click="withVisa = !withVisa"
+      >
+        {{ withVisa ? 'Із візою' : 'Без візи' }}
       </UButton>
       <UDropdownMenu v-if="store.selectedId.value" :items="store.moveToFolderItems.value" :ui="{ content: 'w-52' }">
         <UButton icon="i-lucide-folder" variant="ghost" color="neutral" size="xs">

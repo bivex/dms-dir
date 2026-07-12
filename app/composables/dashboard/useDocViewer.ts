@@ -20,11 +20,12 @@ export function useDocViewer(deps: {
   const viewerTitle = ref('')
   const viewerDownloadAction = ref<(() => void) | null>(null)
 
-  async function openViewer(target?: { doc_id: string, title?: string, fmt?: string, merged?: boolean }) {
+  async function openViewer(target?: { doc_id: string, title?: string, fmt?: string, merged?: boolean, visa?: boolean }) {
     const docId = target?.doc_id ?? form.doc_id
     const docTitle = target?.title ?? form.title ?? docId
     const docFmt = target?.fmt ?? form.fmt
     const isMerged = target?.merged ?? false
+    const withVisa = target?.visa ?? false
 
     viewerLoading.value = true
     viewerOpen.value = true
@@ -38,7 +39,8 @@ export function useDocViewer(deps: {
       viewerDownloadAction.value = async () => {
         try {
           const apiBase = useRuntimeConfig().public.apiBase
-          window.open(`${apiBase}/documents/${docId}/merged-pdf`, '_blank')
+          const base = `${apiBase}/documents/${docId}/merged-pdf`
+          window.open(withVisa ? `${base}?visa=true` : base, '_blank')
         } catch (e) {
           toast.add({ title: 'Помилка завантаження', description: String(e), color: 'error' })
         }
@@ -49,7 +51,9 @@ export function useDocViewer(deps: {
 
     try {
       const apiBase = useRuntimeConfig().public.apiBase
-      const endpoint = isMerged ? `/documents/${docId}/merged-pdf` : `/documents/${docId}/download`
+      const mergedBase = `/documents/${docId}/merged-pdf`
+      const mergedUrl = withVisa ? `${mergedBase}?visa=true` : mergedBase
+      const endpoint = isMerged ? mergedUrl : `/documents/${docId}/download`
       const res = await fetch(`${apiBase}${endpoint}`, {
         headers: token.value ? { Authorization: `Bearer ${token.value}` } : {}
       })

@@ -235,9 +235,10 @@ export function useDocuments(deps: {
     }
   }
 
-  async function downloadMergedPdf() {
+  async function downloadMergedPdf(withVisa = false) {
     try {
-      const url = `${useRuntimeConfig().public.apiBase}/documents/${form.doc_id}/merged-pdf`
+      const base = `${useRuntimeConfig().public.apiBase}/documents/${form.doc_id}/merged-pdf`
+      const url = withVisa ? `${base}?visa=true` : base
       window.open(url, '_blank')
     }
     catch (e: unknown) {
