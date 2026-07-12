@@ -9,10 +9,12 @@ const props = withDefaults(defineProps<{
   accept?: string
   hint?: string
   fileName?: string | null
+  loading?: boolean
 }>(), {
   accept: '',
   hint: 'Перетягніть файл сюди',
   fileName: null,
+  loading: false,
 })
 
 const emit = defineEmits<{ file: [File] }>()
@@ -40,15 +42,20 @@ function onDrop(e: DragEvent) {
 
 <template>
   <div
-    class="rounded-lg border-2 border-dashed transition-colors cursor-pointer text-center px-4 py-5"
-    :class="dragOver
-      ? 'border-primary bg-primary/10'
-      : 'border-default hover:border-primary/60 hover:bg-elevated/50'"
-    @dragenter.prevent="dragOver = true"
-    @dragover.prevent="dragOver = true"
+    class="rounded-lg border-2 border-dashed transition-colors text-center px-4 py-5"
+    :class="[
+      props.loading
+        ? 'opacity-60 cursor-wait pointer-events-none'
+        : 'cursor-pointer',
+      dragOver
+        ? 'border-primary bg-primary/10'
+        : 'border-default hover:border-primary/60 hover:bg-elevated/50'
+    ]"
+    @dragenter.prevent="!props.loading && (dragOver = true)"
+    @dragover.prevent="!props.loading && (dragOver = true)"
     @dragleave.prevent="dragOver = false"
-    @drop.prevent="onDrop"
-    @click="pick"
+    @drop.prevent="!props.loading && onDrop($event)"
+    @click="!props.loading && pick()"
   >
     <input
       ref="inputEl"
@@ -57,7 +64,12 @@ function onDrop(e: DragEvent) {
       :accept="props.accept"
       @change="onInputChange"
     >
-    <template v-if="props.fileName">
+    <!-- loading state -->
+    <template v-if="props.loading">
+      <UIcon name="i-lucide-loader-circle" class="text-2xl text-primary animate-spin" />
+      <div class="text-sm mt-1.5 text-muted">Завантаження…</div>
+    </template>
+    <template v-else-if="props.fileName">
       <div class="flex items-center justify-center gap-2 text-sm">
         <UIcon name="i-lucide-file-check" class="text-success" />
         <span class="font-medium truncate">{{ props.fileName }}</span>

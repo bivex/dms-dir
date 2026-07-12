@@ -486,10 +486,11 @@ email: example@mail.com" class="w-full" />
         <div class="space-y-3 w-full">
           <!-- File Drop Zone for uploading attachments -->
           <div v-if="!store.isLocked.value">
-            <FileDropZone
+          <FileDropZone
               accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp,.webp,.docx,.xlsx,.doc,.xls"
               :loading="store.attachmentsUploading.value"
-              @select="store.uploadAttachment"
+              hint="Перетягніть додаток або оберіть файл"
+              @file="store.uploadAttachment"
             />
           </div>
 
