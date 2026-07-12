@@ -146,11 +146,12 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
           }
           // Підставляємо контакти з профілю користувача, якщо є
           if (!form.sender_contacts) {
-            const u = currentUser.value as (typeof currentUser.value & { phone?: string | null, address?: string | null }) | null
-            if (u && (u.phone || u.address)) {
+            const u = currentUser.value as (typeof currentUser.value & { phone?: string | null, address?: string | null, email?: string | null }) | null
+            if (u && (u.phone || u.address || u.email)) {
               const lines: string[] = []
               if (u.address) lines.push(...u.address.split('\n').filter(Boolean))
               if (u.phone) lines.push(`тел.: ${u.phone}`)
+              if (u.email) lines.push(`email: ${u.email}`)
               form.sender_contacts = lines.join('\n')
             } else if (tpl.sender_contacts) {
               form.sender_contacts = tpl.sender_contacts
