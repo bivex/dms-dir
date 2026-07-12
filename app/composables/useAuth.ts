@@ -19,6 +19,7 @@ export interface AuthUser {
   /** Контакти фізособи-заявника — підставляються у блок «від кого» заяви/скарги. */
   phone?: string | null
   address?: string | null
+  has_facsimile?: boolean | null
 }
 
 export function useAuth() {

@@ -20,7 +20,7 @@ export function useDocViewer(deps: {
   const viewerTitle = ref('')
   const viewerDownloadAction = ref<(() => void) | null>(null)
 
-  async function openViewer(target?: { doc_id: string, title?: string, fmt?: string, merged?: boolean, visa?: boolean }) {
+  async function openViewer(target?: { doc_id?: string, title?: string, fmt?: string, merged?: boolean, visa?: boolean }) {
     const docId = target?.doc_id ?? form.doc_id
     const docTitle = target?.title ?? form.title ?? docId
     const docFmt = target?.fmt ?? form.fmt

@@ -180,6 +180,7 @@ function handleCategoryClick(catId: string) {
         <div class="flex items-center gap-1 flex-shrink-0">
           <UIcon v-if="useAuth().user?.value?.kep_serial_number" name="i-lucide-key-round" class="text-success" title="КЕП прив'язано" />
           <UIcon v-if="useAuth().user?.value?.organization_cert_cn" name="i-lucide-stamp" class="text-primary" title="Печатку юрособи прив'язано" />
+          <UIcon v-if="useAuth().user?.value?.has_facsimile" name="i-lucide-signature" class="text-warning" title="Факсиміле підпису завантажено" />
         </div>
       </div>
       <UButton block variant="ghost" color="neutral" icon="i-lucide-key-round" size="sm" class="justify-start" @click="store.openKepModal()">
