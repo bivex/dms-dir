@@ -182,7 +182,7 @@ function formatBytes(bytes: number, decimals = 2) {
         Переглянути
       </UButton>
       <UButton
-        v-if="store.attachments.length > 0"
+        v-if="store.attachments.value.length > 0"
         icon="i-lucide-eye"
         variant="ghost"
         color="neutral"
@@ -196,7 +196,7 @@ function formatBytes(bytes: number, decimals = 2) {
         Завантажити
       </UButton>
       <UButton
-        v-if="store.attachments.length > 0"
+        v-if="store.attachments.value.length > 0"
         icon="i-lucide-file-stack"
         variant="ghost"
         color="neutral"
