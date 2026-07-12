@@ -68,6 +68,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     reg_index: '',
     body: '',
     addressees: '',
+    sender_contacts: '',
     signers: '',
     signerUsers: [] as SignerUser[],
     journal_id: null,
@@ -253,6 +254,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       reg_index: form.reg_index,
       body: form.body.split('\n').filter(Boolean),
       addressees: form.addressees ? form.addressees.split('\n').filter(Boolean) : [],
+      sender_contacts: form.sender_contacts || '',
       signers: signerLines,
       journal_id: form.journal_id ? Number(form.journal_id) : null,
       approval_type: form.approval_type,
@@ -268,6 +270,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     form.reg_index = ''
     form.body = ''
     form.addressees = ''
+    form.sender_contacts = ''
     form.signers = ''
     form.signerUsers = []
     form.journal_id = null
@@ -327,6 +330,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       form.body = Array.isArray(b) ? b.join('\n') : String(b ?? '')
       const addrs = cj.addressees
       form.addressees = Array.isArray(addrs) ? addrs.join('\n') : String(addrs ?? '')
+      form.sender_contacts = String(cj.sender_contacts ?? '')
     }
     const fr = full as Record<string, unknown>
     if (fr.reg_index) form.reg_index = String(fr.reg_index)

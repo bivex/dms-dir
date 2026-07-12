@@ -353,6 +353,17 @@ function toggleSignerType(index: number) {
 м. Київ, 01011" class="w-full" />
       </UFormField>
 
+      <UFormField
+        v-if="form.subject_type === 'person'"
+        label="Контактні дані заявника"
+        help="Адреса, телефон, e-mail — кожна деталь з нового рядка. Виводяться під ПІБ у шапці бланка дрібним шрифтом."
+      >
+        <UTextarea v-model="form.sender_contacts" :rows="3" placeholder="вул. Садова, 5, кв. 12
+м. Харків, 61000
+тел.: +38 050 123 45 67
+email: example@mail.com" class="w-full" />
+      </UFormField>
+
       <UFormField label="Погоджувачі (із користувачів системи)">
         <div class="space-y-2 w-full">
           <USelect

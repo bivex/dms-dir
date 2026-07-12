@@ -101,6 +101,7 @@ export type DocForm = {
   reg_index: string
   body: string
   addressees: string
+  sender_contacts: string
   signers: string
   signerUsers: SignerUser[]
   journal_id?: number | null
