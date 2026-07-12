@@ -28,6 +28,7 @@ const DOC_TYPE_PREFIX: Record<string, string> = {
   'Доповідна записка': 'DZP',
   'Пояснювальна записка': 'PZP',
   'Заява': 'ZVA',
+  'Заява про надання матеріальної допомоги': 'ZVA-M',
   'Акт': 'AKT',
   'Довідка': 'DVK',
   'Положення': 'PLH',
@@ -85,8 +86,45 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
   // оновлюємо doc_id з відповідним укр. префіксом (NAKAZ-…, LYST-…). На вже
   // збереженому документі doc_id не чіпаємо (це його сталий ідентифікатор).
   watch(() => form.doc_type, (newType) => {
-    if (docStatus.value === '' && DOC_TYPE_PREFIX[newType]) {
-      form.doc_id = genDocId(newType)
+    if (docStatus.value === '') {
+      if (DOC_TYPE_PREFIX[newType]) {
+        form.doc_id = genDocId(newType)
+      }
+      
+      const templates: Record<string, { title: string, body: string, subject_type?: 'legal' | 'fop' | 'person' }> = {
+        'Наказ про відпустку': {
+          title: 'Про надання щорічної відпустки',
+          body: 'НАКАЗУЮ:\n1. Надати [ПІБ] щорічну основну відпустку тривалістю 14 календарних днів з [Дата] по [Дата] за робочий період з [Дата] по [Дата].\n2. Головному бухгалтеру провести розрахунок та виплату відпускних.',
+          subject_type: 'legal'
+        },
+        'Наказ про прийняття на роботу': {
+          title: 'Про прийняття на роботу',
+          body: 'НАКАЗУЮ:\n1. Прийняти [ПІБ] на роботу з [Дата] на посаду [Посада].\n2. Встановити посадовий оклад згідно зі штатним розкладом.',
+          subject_type: 'legal'
+        },
+        'Заява': {
+          title: 'Заява про надання матеріальної допомоги',
+          body: 'Прошу надати мені матеріальну допомогу у зв\'язку зі скрутним матеріальним становищем (на лікування / за сімейними обставинами).',
+          subject_type: 'person'
+        },
+        'Заява про надання матеріальної допомоги': {
+          title: 'Заява про надання матеріальної допомоги',
+          body: 'Прошу надати мені матеріальну допомогу у зв\'язку зі скрутним матеріальним становищем (на лікування / за сімейними обставинами).',
+          subject_type: 'person'
+        },
+        'Лист': {
+          title: 'Щодо співпраці та надання інформації',
+          body: 'Шановні колеги!\n\nЗвертаємося до вас із запитом про надання інформації щодо...\nБудемо вдячні за оперативну відповідь.',
+          subject_type: 'legal'
+        }
+      }
+
+      const tpl = templates[newType]
+      if (tpl) {
+        if (!form.title) form.title = tpl.title
+        if (!form.body) form.body = tpl.body
+        if (tpl.subject_type) form.subject_type = tpl.subject_type
+      }
     }
   })
   const approverList = ref<ApproverEntry[]>([])
