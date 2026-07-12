@@ -95,7 +95,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
         form.doc_id = genDocId(newType)
       }
       
-      const templates: Record<string, { title: string, body: string, subject_type?: 'legal' | 'fop' | 'person', addressees?: string }> = {
+      const templates: Record<string, { title: string, body: string, subject_type?: 'legal' | 'fop' | 'person', addressees?: string, sender_contacts?: string }> = {
         'Наказ про відпустку': {
           title: 'Про надання щорічної відпустки',
           body: 'НАКАЗУЮ:\n1. Надати [ПІБ] щорічну основну відпустку тривалістю 14 календарних днів з [Дата] по [Дата] за робочий період з [Дата] по [Дата].\n2. Головному бухгалтеру провести розрахунок та виплату відпускних.',
@@ -110,19 +110,22 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
           title: 'Заява про надання матеріальної допомоги',
           body: 'Прошу надати мені матеріальну допомогу у зв\'язку зі скрутним матеріальним становищем (на лікування / за сімейними обставинами).',
           subject_type: 'person',
-          addressees: 'Директору ДП «ДІЛОВОД»'
+          addressees: 'Директору ДП «ДІЛОВОД»',
+          sender_contacts: '[Вулиця, будинок, квартира]\n[Місто, індекс]\nтел.: [+38 0XX XXX XX XX]\nemail: [your@email.com]'
         },
         'Заява про надання матеріальної допомоги': {
           title: 'Заява про надання матеріальної допомоги',
           body: 'Прошу надати мені матеріальну допомогу у зв\'язку зі скрутним матеріальним становищем (на лікування / за сімейними обставинами).',
           subject_type: 'person',
-          addressees: 'Директору ДП «ДІЛОВОД»'
+          addressees: 'Директору ДП «ДІЛОВОД»',
+          sender_contacts: '[Вулиця, будинок, квартира]\n[Місто, індекс]\nтел.: [+38 0XX XXX XX XX]\nemail: [your@email.com]'
         },
         'Скарга на дії правоохоронців': {
           title: 'Скарга на неправомірні дії (бездіяльність) службових осіб правоохоронних органів',
           body: 'Звертаюся до Вас із скаргою на неправомірні дії та бездіяльність працівників правоохоронних органів.\nПід час проведення процесуальних дій [Дата/Місце] було допущено істотні порушення моїх законних прав, що виявилося у [Опис неправомірних дій або бездіяльності].\nПрошу провести службове розслідування за вказаними фактами, вжити заходів дисциплінарного реагування та повідомити мене про результати розгляду.',
           subject_type: 'person',
-          addressees: 'Генеральному прокурору\nвул. Різницька, 13/15\nм. Київ, 01011'
+          addressees: 'Генеральному прокурору\nвул. Різницька, 13/15\nм. Київ, 01011',
+          sender_contacts: '[Вулиця, будинок, квартира]\n[Місто, індекс]\nтел.: [+38 0XX XXX XX XX]\nemail: [your@email.com]'
         },
         'Лист': {
           title: 'Щодо співпраці та надання інформації',
@@ -137,6 +140,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
         if (!form.body) form.body = tpl.body
         if (tpl.subject_type) form.subject_type = tpl.subject_type
         if (tpl.addressees && !form.addressees) form.addressees = tpl.addressees
+        if (tpl.sender_contacts && !form.sender_contacts) form.sender_contacts = tpl.sender_contacts
         if (tpl.subject_type === 'person') {
           if (form.org_name === 'ДЕРЖАВНЕ ПІДПРИЄМСТВО «ДІЛОВОД»' || !form.org_name) {
             form.org_name = currentUser.value ? `Гр. ${currentUser.value.name}` : ''
