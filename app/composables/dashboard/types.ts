@@ -87,6 +87,9 @@ export interface UserEntry {
   kep_certificate_serial?: string | null
   /** CN сертифіката електронної печатки юрособи (окремо від КЕП особи). */
   organization_cert_cn?: string | null
+  /** Контактні дані заявника: телефон і адреса проживання. */
+  phone?: string | null
+  address?: string | null
 }
 
 /** Реактивна форма картки документа. */

@@ -140,10 +140,21 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
         if (!form.body) form.body = tpl.body
         if (tpl.subject_type) form.subject_type = tpl.subject_type
         if (tpl.addressees && !form.addressees) form.addressees = tpl.addressees
-        if (tpl.sender_contacts && !form.sender_contacts) form.sender_contacts = tpl.sender_contacts
         if (tpl.subject_type === 'person') {
           if (form.org_name === 'ДЕРЖАВНЕ ПІДПРИЄМСТВО «ДІЛОВОД»' || !form.org_name) {
             form.org_name = currentUser.value ? `Гр. ${currentUser.value.name}` : ''
+          }
+          // Підставляємо контакти з профілю користувача, якщо є
+          if (!form.sender_contacts) {
+            const u = currentUser.value as (typeof currentUser.value & { phone?: string | null, address?: string | null }) | null
+            if (u && (u.phone || u.address)) {
+              const lines: string[] = []
+              if (u.address) lines.push(...u.address.split('\n').filter(Boolean))
+              if (u.phone) lines.push(`тел.: ${u.phone}`)
+              form.sender_contacts = lines.join('\n')
+            } else if (tpl.sender_contacts) {
+              form.sender_contacts = tpl.sender_contacts
+            }
           }
         }
       }

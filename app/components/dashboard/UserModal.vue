@@ -99,6 +99,30 @@ const ROLE_OPTIONS = [
               class="w-full"
             />
           </UFormField>
+
+          <UFormField
+            label="Телефон"
+            help="Відображається у блоці &#39;від кого&#39; на документах фізособи"
+          >
+            <UInput
+              v-model="form.phone"
+              placeholder="+38 050 123 45 67"
+              class="w-full"
+            />
+          </UFormField>
+
+          <UFormField
+            label="Адреса проживання"
+            help="Вулиця, будинок, місто, індекс — по рядку. Підставляється у &#39;від кого&#39; заяв і скарг."
+          >
+            <UTextarea
+              v-model="form.address"
+              :rows="3"
+              placeholder="вул. Садова, 5, кв. 12
+м. Харків, 61000"
+              class="w-full"
+            />
+          </UFormField>
         </div>
 
         <div class="flex gap-2 justify-end pt-2">

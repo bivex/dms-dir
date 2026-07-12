@@ -26,7 +26,9 @@ export function useUsers(deps: {
     email: '',
     position: '',
     role: 'clerk',
-    password: ''
+    password: '',
+    phone: '',
+    address: ''
   })
 
   async function reloadUsers() {
@@ -49,6 +51,8 @@ export function useUsers(deps: {
     userForm.position = ''
     userForm.role = 'clerk'
     userForm.password = ''
+    userForm.phone = ''
+    userForm.address = ''
     userModalOpen.value = true
   }
 
@@ -61,6 +65,8 @@ export function useUsers(deps: {
     userForm.position = u.position || ''
     userForm.role = u.role || 'clerk'
     userForm.password = ''
+    userForm.phone = u.phone || ''
+    userForm.address = u.address || ''
     userModalOpen.value = true
   }
 
@@ -91,17 +97,21 @@ export function useUsers(deps: {
             email,
             position: userForm.position.trim(),
             role: userForm.role,
-            password: userForm.password.trim()
+            password: userForm.password.trim(),
+            phone: userForm.phone.trim() || null,
+            address: userForm.address.trim() || null
           }
         })
         toast.add({ title: 'Користувача додано успішно', color: 'success' })
       }
       else if (userEditId.value !== null) {
-        const body: Record<string, string> = {
+        const body: Record<string, string | null> = {
           name,
           email,
           position: userForm.position.trim(),
-          role: userForm.role
+          role: userForm.role,
+          phone: userForm.phone.trim() || null,
+          address: userForm.address.trim() || null
         }
         // пароль шлемо лише якщо введений (зміна паролю)
         if (userForm.password.trim()) body.password = userForm.password.trim()
