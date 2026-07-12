@@ -16,6 +16,9 @@ export interface AuthUser {
   /** CN сертифіката ЕЛЕКТРОННОЇ ПЕЧАТКИ юрособи, прив'язаного в кабінеті.
    *  Окремо від kep_subject_cn (КЕП особи). Дзеркало бекендового User.organization_cert_cn. */
   organization_cert_cn?: string | null
+  /** Контакти фізособи-заявника — підставляються у блок «від кого» заяви/скарги. */
+  phone?: string | null
+  address?: string | null
 }
 
 export function useAuth() {
