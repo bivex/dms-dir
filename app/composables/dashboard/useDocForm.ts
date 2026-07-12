@@ -52,6 +52,19 @@ function genDocId(docType?: string): string {
   return `${prefix}-${rand}`
 }
 
+/** Будує рядок контактів заявника з профілю користувача (для блоку «від кого»).
+ *  Адреса (багаторядкова) → телефон → email. Повертає null, якщо профіль
+ *  порожній — тоді використовується шаблон з плейсхолдерами [. */
+function buildContactsFromUser(u: { phone?: string | null, address?: string | null, email?: string | null } | null): string | null {
+  if (!u) return null
+  if (!u.address && !u.phone && !u.email) return null
+  const lines: string[] = []
+  if (u.address) lines.push(...u.address.split('\n').map(l => l.trim()).filter(Boolean))
+  if (u.phone) lines.push(`тел.: ${u.phone}`)
+  if (u.email) lines.push(`email: ${u.email}`)
+  return lines.length ? lines.join('\n') : null
+}
+
 export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
   const toast = useToast()
   const { user: currentUser } = useAuth()
@@ -144,23 +157,40 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
           if (form.org_name === 'ДЕРЖАВНЕ ПІДПРИЄМСТВО «ДІЛОВОД»' || !form.org_name) {
             form.org_name = currentUser.value ? `Гр. ${currentUser.value.name}` : ''
           }
-          // Підставляємо контакти з профілю користувача, якщо є
-          if (!form.sender_contacts) {
-            const u = currentUser.value as (typeof currentUser.value & { phone?: string | null, address?: string | null, email?: string | null }) | null
-            if (u && (u.phone || u.address || u.email)) {
-              const lines: string[] = []
-              if (u.address) lines.push(...u.address.split('\n').filter(Boolean))
-              if (u.phone) lines.push(`тел.: ${u.phone}`)
-              if (u.email) lines.push(`email: ${u.email}`)
-              form.sender_contacts = lines.join('\n')
-            } else if (tpl.sender_contacts) {
-              form.sender_contacts = tpl.sender_contacts
-            }
-          }
+          applyPersonContacts(tpl.sender_contacts)
         }
       }
     }
   })
+
+  /** Підставляє контакти заявника з профілю у form.sender_contacts.
+   *  Викликається як при зміні виду документа, так і коли профіль дістався
+   *  зі /auth/me (bootstrap-кеш localStorage міг бути без phone/address).
+   *  Не затирає свідомі правки користувача — перезаписує лише порожнє поле,
+   *  шаблон з [плейсхолдерами] або stale-рядок, якому бракує даних з профілю. */
+  function applyPersonContacts(templateFallback?: string) {
+    if (docStatus.value !== '' || form.subject_type !== 'person') return
+    const u = currentUser.value
+    const profile = buildContactsFromUser(u)
+    const current = form.sender_contacts
+    // поле порожнє або ще шаблонне (містить маркери [...])
+    const isPlaceholder = !current || current.includes('[')
+    // stale-стан: у полі немає телефону/адреси, які тепер є у профілі
+    const staleVsProfile = !!profile && !!current && (
+      (!!u?.phone && !current.includes(u.phone))
+      || (!!u?.address && !current.includes((u.address!.split('\n')[0] || '').trim()))
+    )
+    if (profile && (isPlaceholder || staleVsProfile)) {
+      form.sender_contacts = profile
+    }
+    else if (!current && templateFallback) {
+      form.sender_contacts = templateFallback
+    }
+  }
+
+  // Коли профіль користувача дочитується з /auth/me (після гідратації з кешу) —
+  // оновлюємо контакти, якщо вони ще не заповнені реальними даними.
+  watch(currentUser, () => applyPersonContacts(), { deep: true })
   const approverList = ref<ApproverEntry[]>([])
   const generating = ref(false)
   const submitting = ref(false)
