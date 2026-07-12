@@ -175,7 +175,7 @@ function handleCategoryClick(catId: string) {
     </nav>
 
     <div class="p-3 border-t border-default space-y-1">
-      <ThemeToggle />
+      <ThemeSelect />
 
       <div class="text-xs text-muted mb-1 flex items-center justify-between px-2">
         <span class="truncate">{{ useAuth().user?.value?.name || useAuth().user?.value?.email }}</span>

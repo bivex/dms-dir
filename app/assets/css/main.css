@@ -11,3 +11,79 @@
   --ui-bg-elevated: var(--ui-color-neutral-900);
   --ui-bg-accented: var(--ui-color-neutral-800);
 }
+
+/* Тепла (Sepia) — комфортне читання довгих текстів */
+.sepia {
+  --ui-bg: #f4ecd8;
+  --ui-bg-muted: #ece0c8;
+  --ui-bg-elevated: #fbf5e9;
+  --ui-bg-accented: #e7d8b8;
+  --ui-bg-inverted: #3b2f1e;
+  --ui-text: #433422;
+  --ui-text-muted: #6b5a44;
+  --ui-text-dimmed: #8a7860;
+  --ui-text-toned: #5a4a36;
+  --ui-text-highlighted: #2b2013;
+  --ui-text-inverted: #f4ecd8;
+  --ui-border: #d8c8a8;
+  --ui-border-muted: #d8c8a8;
+  --ui-border-accented: #c4b08a;
+  --ui-border-inverted: #3b2f1e;
+}
+
+/* Контрастна — доступність, погане освітлення */
+.contrast {
+  --ui-bg: #000000;
+  --ui-bg-muted: #0a0a0a;
+  --ui-bg-elevated: #111111;
+  --ui-bg-accented: #1a1a1a;
+  --ui-bg-inverted: #ffffff;
+  --ui-text: #ffffff;
+  --ui-text-muted: #e0e0e0;
+  --ui-text-dimmed: #cccccc;
+  --ui-text-toned: #f0f0f0;
+  --ui-text-highlighted: #ffffff;
+  --ui-text-inverted: #000000;
+  --ui-border: #ffffff;
+  --ui-border-muted: #888888;
+  --ui-border-accented: #ffffff;
+  --ui-border-inverted: #ffffff;
+}
+
+/* Офісна (Low-Blue) — спокійний сіро-блакитний */
+.office {
+  --ui-bg: #eef2f6;
+  --ui-bg-muted: #e6ebf1;
+  --ui-bg-elevated: #f5f8fb;
+  --ui-bg-accented: #dbe3ec;
+  --ui-bg-inverted: #1e2a36;
+  --ui-text: #2b3742;
+  --ui-text-muted: #55636e;
+  --ui-text-dimmed: #7c8893;
+  --ui-text-toned: #3f4d58;
+  --ui-text-highlighted: #16202a;
+  --ui-text-inverted: #eef2f6;
+  --ui-border: #d3dce5;
+  --ui-border-muted: #d3dce5;
+  --ui-border-accented: #bcc8d4;
+  --ui-border-inverted: #1e2a36;
+}
+
+/* Монохромна (Slate) — професійна сіра гама */
+.mono {
+  --ui-bg: #1f2430;
+  --ui-bg-muted: #181c26;
+  --ui-bg-elevated: #262c3a;
+  --ui-bg-accented: #303748;
+  --ui-bg-inverted: #e8ebf0;
+  --ui-text: #e2e6ec;
+  --ui-text-muted: #aab2bf;
+  --ui-text-dimmed: #8b94a3;
+  --ui-text-toned: #c2c9d4;
+  --ui-text-highlighted: #ffffff;
+  --ui-text-inverted: #1f2430;
+  --ui-border: #353c4d;
+  --ui-border-muted: #2c3342;
+  --ui-border-accented: #444c61;
+  --ui-border-inverted: #e8ebf0;
+}
