@@ -104,3 +104,91 @@ body {
   --ui-border-accented: #444c61;
   --ui-border-inverted: #e8ebf0;
 }
+
+/* Паперова (Soft Paper) — імітація якісного паперу, без чисто-білого */
+.paper {
+  --ui-bg: #faf9f6;
+  --ui-bg-muted: #f0eee8;
+  --ui-bg-elevated: #ffffff;
+  --ui-bg-accented: #e8e4da;
+  --ui-bg-inverted: #333333;
+  --ui-text: #333333;
+  --ui-text-muted: #6b6b64;
+  --ui-text-dimmed: #8c8c84;
+  --ui-text-toned: #4d4d47;
+  --ui-text-highlighted: #1c1c1a;
+  --ui-text-inverted: #faf9f6;
+  --ui-border: #e2ddd2;
+  --ui-border-muted: #e2ddd2;
+  --ui-border-accented: #cfc9bc;
+  --ui-border-inverted: #333333;
+  --reader-paper: #faf9f6;
+  --reader-ink: #333333;
+  --reader-border: #e2ddd2;
+}
+
+/* Лісова (Soft Sage) — заспокійливий зеленувато-сірий */
+.sage {
+  --ui-bg: #e8eceb;
+  --ui-bg-muted: #dee4e2;
+  --ui-bg-elevated: #f4f7f5;
+  --ui-bg-accented: #d2dad7;
+  --ui-bg-inverted: #2f3a36;
+  --ui-text: #2f3a36;
+  --ui-text-muted: #5a6660;
+  --ui-text-dimmed: #7c877f;
+  --ui-text-toned: #44524c;
+  --ui-text-highlighted: #1c2421;
+  --ui-text-inverted: #e8eceb;
+  --ui-border: #cbd3d0;
+  --ui-border-muted: #cbd3d0;
+  --ui-border-accented: #b3bdb8;
+  --ui-border-inverted: #2f3a36;
+  --reader-paper: #fbfcfb;
+  --reader-ink: #2f3a36;
+  --reader-border: #cbd3d0;
+}
+
+/* Архітектурна сіра (Cool Slate) — ділова холодна сіра з темно-синім текстом */
+.cool-slate {
+  --ui-bg: #e0e0e2;
+  --ui-bg-muted: #d6d6da;
+  --ui-bg-elevated: #edeff0;
+  --ui-bg-accented: #cacace;
+  --ui-bg-inverted: #1b2a4a;
+  --ui-text: #1b2a4a;
+  --ui-text-muted: #4a5570;
+  --ui-text-dimmed: #6b7488;
+  --ui-text-toned: #344063;
+  --ui-text-highlighted: #0f1830;
+  --ui-text-inverted: #e0e0e2;
+  --ui-border: #cfcfd4;
+  --ui-border-muted: #cfcfd4;
+  --ui-border-accented: #b9b9c0;
+  --ui-border-inverted: #1b2a4a;
+  --reader-paper: #f4f4f6;
+  --reader-ink: #1b2a4a;
+  --reader-border: #cfcfd4;
+}
+
+/* Нічна оливкова (Dark Olive / Coffee) — м'яка альтернатива чорній темі */
+.olive {
+  --ui-bg: #2c2825;
+  --ui-bg-muted: #241f1c;
+  --ui-bg-elevated: #34302b;
+  --ui-bg-accented: #3e382f;
+  --ui-bg-inverted: #ede6d6;
+  --ui-text: #ede6d6;
+  --ui-text-muted: #c9bfae;
+  --ui-text-dimmed: #a89e8c;
+  --ui-text-toned: #d8cfbf;
+  --ui-text-highlighted: #fffaf0;
+  --ui-text-inverted: #2c2825;
+  --ui-border: #4a4339;
+  --ui-border-muted: #3a342c;
+  --ui-border-accented: #5a5246;
+  --ui-border-inverted: #ede6d6;
+  --reader-paper: #2c2825;
+  --reader-ink: #ede6d6;
+  --reader-border: #4a4339;
+}

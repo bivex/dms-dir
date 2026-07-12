@@ -8,7 +8,11 @@ const themes = [
   { label: 'Тепла', value: 'sepia', icon: 'i-lucide-book-open' },
   { label: 'Контрастна', value: 'contrast', icon: 'i-lucide-contrast' },
   { label: 'Офісна', value: 'office', icon: 'i-lucide-building-2' },
-  { label: 'Монохромна', value: 'mono', icon: 'i-lucide-circle-dashed' }
+  { label: 'Монохромна', value: 'mono', icon: 'i-lucide-circle-dashed' },
+  { label: 'Паперова', value: 'paper', icon: 'i-lucide-newspaper' },
+  { label: 'Лісова', value: 'sage', icon: 'i-lucide-leaf' },
+  { label: 'Архітектурна сіра', value: 'cool-slate', icon: 'i-lucide-landmark' },
+  { label: 'Нічна оливкова', value: 'olive', icon: 'i-lucide-coffee' }
 ]
 
 const selected = computed({

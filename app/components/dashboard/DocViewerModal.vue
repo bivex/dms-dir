@@ -3,7 +3,7 @@ import { useDashboard } from '~/composables/dashboard/useDashboard'
 import { useReaderPrefs } from '~/composables/useReaderPrefs'
 
 const store = useDashboard()
-const { scale, serif, stepScale, toggleSerif } = useReaderPrefs()
+const { scale, serif, inverted, stepScale, toggleSerif, toggleInvert } = useReaderPrefs()
 
 const SERIF_STACK = "Georgia, 'Times New Roman', 'PT Serif', 'Liberation Serif', serif"
 
@@ -11,6 +11,11 @@ const readerStyle = computed(() => ({
   fontSize: `${scale.value}rem`,
   fontFamily: serif.value ? SERIF_STACK : 'var(--font-sans), sans-serif'
 }))
+
+// Інверсія документа: для PDF/зображень — CSS-фільтр, для DOCX — клас-перевертання паперу/чорнила
+const invertFilter = computed(() =>
+  inverted.value ? { filter: 'invert(1) hue-rotate(180deg)' } : {}
+)
 </script>
 
 <template>
@@ -67,6 +72,15 @@ const readerStyle = computed(() => ({
               :disabled="!store.viewerUrl.value"
               @click="store.openViewerInNewTab()"
             />
+            <UButton
+              :icon="inverted ? 'i-lucide-moon' : 'i-lucide-sun'"
+              :variant="inverted ? 'soft' : 'ghost'"
+              :color="inverted ? 'primary' : 'neutral'"
+              size="xs"
+              title="Інверсія документа (світлий текст на темному тлі)"
+              :disabled="store.viewerMode.value === 'unsupported'"
+              @click="toggleInvert()"
+            />
             <UButton icon="i-lucide-x" variant="ghost" size="xs" @click="store.closeViewer()" />
           </div>
         </div>
@@ -79,12 +93,14 @@ const readerStyle = computed(() => ({
             v-if="store.viewerMode.value === 'pdf' && store.viewerUrl.value"
             :src="store.viewerUrl.value"
             class="w-full h-full border-0"
+            :style="invertFilter"
             title="PDF перегляд"
           />
           <!-- DOCX: конвертований HTML (mammoth) -->
           <div
             v-else-if="store.viewerMode.value === 'docx' && store.viewerHtml.value"
             class="docx-preview mx-auto my-6 max-w-3xl shadow-lg rounded"
+            :class="{ inverted }"
             :style="readerStyle"
             v-html="store.viewerHtml.value"
           />
@@ -93,7 +109,7 @@ const readerStyle = computed(() => ({
             v-else-if="store.viewerMode.value === 'image' && store.viewerUrl.value"
             class="w-full h-full flex items-center justify-center p-4 bg-zinc-900"
           >
-            <img :src="store.viewerUrl.value" class="max-w-full max-h-full object-contain" alt="Зображення" />
+            <img :src="store.viewerUrl.value" class="max-w-full max-h-full object-contain" :style="invertFilter" alt="Зображення" />
           </div>
           <!-- Формат без прев'ю -->
           <div
@@ -133,4 +149,9 @@ const readerStyle = computed(() => ({
 .docx-preview :deep(th) { border: 1px solid var(--reader-border, #d4cdb8); padding: 6px 10px; }
 .docx-preview :deep(strong) { font-weight: 700; }
 .docx-preview :deep(a) { color: var(--ui-primary, #2563eb); }
+.docx-preview.inverted {
+  --reader-paper: #1c1a17;
+  --reader-ink: #e9e3d5;
+  --reader-border: #4a4339;
+}
 </style>
