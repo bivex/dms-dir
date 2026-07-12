@@ -2,21 +2,29 @@
 import { useDashboard } from '~/composables/dashboard/useDashboard'
 
 const store = useDashboard()
+const isCollapsed = ref(false)
 </script>
 
 <template>
   <UCard id="sec-signing">
     <template #header>
-      <div class="flex items-center gap-2 font-semibold">
+      <div class="flex items-center gap-2 font-semibold cursor-pointer select-none" @click="isCollapsed = !isCollapsed">
         <UIcon name="i-lucide-pen-tool" />
-        Підписання
-        <span v-if="store.signerList.value.length" class="ml-auto text-xs font-normal text-muted">
+        <span>Підписання</span>
+        <span v-if="store.signerList.value.length" class="ml-2 text-xs font-normal text-muted">
           {{ store.signerList.value.filter(s => s.status === 'signed').length }}/{{ store.signerList.value.length }} підписано
         </span>
+        <UButton
+          :icon="isCollapsed ? 'i-lucide-chevron-down' : 'i-lucide-chevron-up'"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          class="ml-auto"
+        />
       </div>
     </template>
 
-    <div class="space-y-5">
+    <div v-show="!isCollapsed" class="space-y-5">
       <!-- Черга підписання → timeline -->
       <div>
         <div class="flex items-center justify-between gap-2 mb-3">

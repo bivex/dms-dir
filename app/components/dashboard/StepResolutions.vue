@@ -94,18 +94,27 @@ function formatDate(dateStr?: string | null) {
   }
   return dateStr
 }
+
+const isCollapsed = ref(false)
 </script>
 
 <template>
   <UCard id="sec-resolutions" class="border border-primary/20">
     <template #header>
-      <div class="flex items-center gap-2 font-semibold text-primary">
+      <div class="flex items-center gap-2 font-semibold text-primary cursor-pointer select-none" @click="isCollapsed = !isCollapsed">
         <UIcon name="i-lucide-check-square" />
         <span>Резолюції та контроль виконання</span>
+        <UButton
+          :icon="isCollapsed ? 'i-lucide-chevron-down' : 'i-lucide-chevron-up'"
+          variant="ghost"
+          color="primary"
+          size="xs"
+          class="ml-auto"
+        />
       </div>
     </template>
 
-    <div class="space-y-6">
+    <div v-show="!isCollapsed" class="space-y-6">
       <!-- Add new resolution (if signed) -->
       <div class="p-4 rounded-lg bg-primary/5 border border-primary/10 space-y-4">
         <div class="text-sm font-semibold text-primary">Накласти резолюцію</div>

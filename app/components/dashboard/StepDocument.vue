@@ -287,12 +287,14 @@ function formatBytes(bytes: number, decimals = 2) {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
 }
+
+const isCollapsed = ref(false)
 </script>
 
 <template>
   <UCard id="sec-document">
     <template #header>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3 cursor-pointer select-none" @click="isCollapsed = !isCollapsed">
         <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary flex-shrink-0">
           <UIcon name="i-lucide-file-text" class="text-xl" />
         </div>
@@ -311,8 +313,17 @@ function formatBytes(bytes: number, decimals = 2) {
           size="md"
           class="flex-shrink-0"
         />
+        <UButton
+          :icon="isCollapsed ? 'i-lucide-chevron-down' : 'i-lucide-chevron-up'"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          class="ml-2 flex-shrink-0"
+        />
       </div>
     </template>
+
+    <div v-show="!isCollapsed">
 
     <!-- secondary-тулбар -->
     <div class="flex items-center gap-1 mb-4 pb-3 border-b border-default flex-wrap">
@@ -422,12 +433,13 @@ function formatBytes(bytes: number, decimals = 2) {
             class="w-full"
           />
         </UFormField>
-        <UFormField label="Реєстр. індекс" :help="store.autoRegister.value ? 'авто при поданні' : 'введіть вручну'">
+        <UFormField label="Реєстр. індекс" :help="store.autoRegister.value ? (store.docStatus.value === 'signed' ? 'автоматично присвоєно' : 'буде присвоєно після підписання') : 'введіть вручну'">
           <UInput
-            v-model="form.reg_index"
+            :model-value="store.autoRegister.value && store.docStatus.value !== 'signed' ? 'Буде присвоєно після підписання' : form.reg_index"
             :disabled="store.autoRegister.value"
             :placeholder="store.autoRegister.value ? 'авто' : '№'"
             class="w-full"
+            @update:model-value="val => { if (!store.autoRegister.value) form.reg_index = val }"
           />
         </UFormField>
       </div>
@@ -803,5 +815,6 @@ email: example@mail.com" class="w-full" />
         </UButton>
       </div>
     </fieldset>
+    </div>
   </UCard>
 </template>

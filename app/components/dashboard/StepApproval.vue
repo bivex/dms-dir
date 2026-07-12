@@ -7,6 +7,7 @@ const { form } = store
 const { user } = useAuth()
 
 const commentText = ref('')
+const isCollapsed = ref(false)
 
 const hasApprovers = computed(() => {
   return store.approverList.value.length > 0
@@ -74,9 +75,10 @@ async function handleAction(action: 'approve' | 'reject') {
   <UCard id="sec-approval">
     <template #header>
       <div class="flex items-center justify-between gap-2 font-semibold">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 cursor-pointer select-none flex-1" @click="isCollapsed = !isCollapsed">
           <UIcon name="i-lucide-users" />
           <span>Погодження та візування</span>
+          <UIcon :name="isCollapsed ? 'i-lucide-chevron-down' : 'i-lucide-chevron-up'" class="text-muted ml-1" />
         </div>
         <UButton
           v-if="hasApprovers && store.docStatus.value !== 'draft'"
@@ -84,14 +86,14 @@ async function handleAction(action: 'approve' | 'reject') {
           variant="outline"
           color="neutral"
           size="xs"
-          @click="store.downloadApprovalSheet(form.doc_id)"
+          @click.stop="store.downloadApprovalSheet(form.doc_id)"
         >
           Лист погодження (PDF)
         </UButton>
       </div>
     </template>
 
-    <div class="space-y-5">
+    <div v-show="!isCollapsed" class="space-y-5">
       <!-- Submit to approval -->
       <div v-if="store.docStatus.value === 'draft'">
         <div class="flex flex-col gap-3 p-4 rounded-lg bg-default/10 border border-default">

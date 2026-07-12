@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { ref, watch, onMounted } from 'vue'
 import { useDashboard } from '~/composables/dashboard/useDashboard'
 
 const store = useDashboard()
+const isCollapsed = ref(false)
 
 function onSelectCounterparty(cpId: string) {
   if (!cpId) return
@@ -32,18 +34,33 @@ watch(() => store.form.doc_id, (newId) => {
 <template>
   <UCard id="sec-delivery">
     <template #header>
-      <div class="flex items-center gap-2 font-semibold">
+      <div class="flex items-center gap-2 font-semibold cursor-pointer select-none" @click="isCollapsed = !isCollapsed">
         <UIcon name="i-lucide-send" class="text-primary text-lg" />
-        Доставка та відправлення (Укрпошта)
+        <span>Доставка та відправлення (Укрпошта)</span>
+        <UButton
+          :icon="isCollapsed ? 'i-lucide-chevron-down' : 'i-lucide-chevron-up'"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          class="ml-auto"
+        />
       </div>
     </template>
 
-    <div v-if="store.docStatus.value === 'signed'" class="space-y-6">
-      <div class="flex items-center gap-3 p-3 rounded-lg bg-success/10 border border-success/20 text-sm text-default">
+    <div v-show="!isCollapsed" class="space-y-6">
+      <!-- Статус-банер підписання -->
+      <div v-if="store.docStatus.value === 'signed'" class="flex items-center gap-3 p-3 rounded-lg bg-success/10 border border-success/20 text-sm text-default">
         <UIcon name="i-lucide-circle-check" class="text-success text-lg flex-shrink-0" />
         <div>
           <strong>Документ повністю підписано!</strong>
-          <span class="text-xs text-muted block mt-0.5">Ви можете завантажити оригінал ASiC-E контейнера або сформувати поштові бланки Укрпошти для відправлення паперового примірника з описом вкладення.</span>
+          <span class="text-xs text-muted block mt-0.5">Ви можете завантажити оригінал ASiC-E контейнера або сформувати поштові бланки Укрпошти для відправлення паперового примірника.</span>
+        </div>
+      </div>
+      <div v-else class="flex items-center gap-3 p-3 rounded-lg bg-warning/10 border border-warning/20 text-sm text-default">
+        <UIcon name="i-lucide-clock" class="text-warning text-lg flex-shrink-0" />
+        <div>
+          <strong>Попереднє налаштування відправки</strong>
+          <span class="text-xs text-muted block mt-0.5">Документ ще не підписано. Ви можете заповнити адресні дані, але друк бланків Укрпошти буде розблоковано після накладання КЕП.</span>
         </div>
       </div>
 
@@ -174,6 +191,7 @@ watch(() => store.form.doc_id, (newId) => {
           <UButton
             variant="outline"
             icon="i-lucide-archive"
+            :disabled="store.docStatus.value !== 'signed'"
             @click="store.downloadAsice()"
           >
             Завантажити ASiC-E
@@ -181,19 +199,14 @@ watch(() => store.form.doc_id, (newId) => {
           <UButton
             icon="i-lucide-printer"
             :loading="store.deliveryExporting.value"
+            :disabled="store.docStatus.value !== 'signed'"
+            title="Формування бланків доступне лише після підписання КЕП"
             @click="store.triggerDeliveryExport(store.form.doc_id)"
           >
             Сформувати бланки Укрпошти
           </UButton>
         </div>
       </div>
-    </div>
-    <div v-else class="flex flex-col items-center justify-center py-12 text-center text-muted">
-      <UIcon name="i-lucide-lock" class="text-5xl mb-3 opacity-20" />
-      <div class="font-medium">Друк поштових документів заблоковано</div>
-      <p class="text-xs text-muted max-w-xs mt-1">
-        Поштова відправка стане доступною лише після того, як документ буде повністю підписано КЕП/ЕЦП.
-      </p>
     </div>
   </UCard>
 </template>
