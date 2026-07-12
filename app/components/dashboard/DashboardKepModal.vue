@@ -91,7 +91,8 @@ const facsimileVersion = ref(0)
 
 const facsimileUrl = computed(() => {
   const apiBase = useRuntimeConfig().public.apiBase || 'http://localhost:8000'
-  return `${apiBase}/users/me/facsimile?v=${facsimileVersion.value}`
+  const token = auth.token.value ? encodeURIComponent(auth.token.value) : ''
+  return `${apiBase}/users/me/facsimile?token=${token}&v=${facsimileVersion.value}`
 })
 
 function triggerFileInput() {
