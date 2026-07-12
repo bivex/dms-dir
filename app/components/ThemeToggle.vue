@@ -6,7 +6,7 @@ const isDark = computed({
     return colorMode.value === 'dark'
   },
   set(value) {
-    colorMode.value = value ? 'dark' : 'light'
+    colorMode.preference = value ? 'dark' : 'light'
   }
 })
 </script>
