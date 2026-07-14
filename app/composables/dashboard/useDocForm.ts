@@ -98,6 +98,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     use_archived_stamp: false,
     use_annulled_stamp: false,
     use_urgent_stamp: false,
+    extra_stamps: [] as string[],
     control_executor_id: null,
     acknowledge_user_ids: [],
     related_doc_id: null
@@ -335,7 +336,8 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       use_copy_mark: !!form.use_copy_mark,
       use_archived_stamp: !!form.use_archived_stamp,
       use_annulled_stamp: !!form.use_annulled_stamp,
-      use_urgent_stamp: !!form.use_urgent_stamp
+      use_urgent_stamp: !!form.use_urgent_stamp,
+      extra_stamps: form.extra_stamps || []
     }
   }
 
@@ -363,6 +365,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     form.use_archived_stamp = false
     form.use_annulled_stamp = false
     form.use_urgent_stamp = false
+    form.extra_stamps = []
     report.value = null
     pdfaInfo.value = null
     docStatus.value = ''
@@ -422,6 +425,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       form.use_archived_stamp = !!cj.use_archived_stamp
       form.use_annulled_stamp = !!cj.use_annulled_stamp
       form.use_urgent_stamp = !!cj.use_urgent_stamp
+      form.extra_stamps = Array.isArray(cj.extra_stamps) ? cj.extra_stamps.map(String) : []
       const b = cj.body
       form.body = Array.isArray(b) ? b.join('\n') : String(b ?? '')
       const addrs = cj.addressees
