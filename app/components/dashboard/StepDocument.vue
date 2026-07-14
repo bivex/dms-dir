@@ -564,6 +564,45 @@ const isCollapsed = ref(false)
         />
       </UFormField>
 
+      <UCheckbox
+        v-if="form.fmt === 'pdf'"
+        v-model="form.use_incoming_stamp"
+        label="Вхідний реєстраційний штамп"
+        help="синій прямокутний штамп у правому нижньому куті першої сторінки"
+      />
+
+      <UCheckbox
+        v-if="form.fmt === 'pdf'"
+        v-model="form.use_copy_stamp"
+        label="Штамп «Згідно з оригіналом»"
+        help="синій штамп засвідчення копії під підписами"
+      />
+
+      <UCheckbox
+        v-if="form.fmt === 'pdf'"
+        v-model="form.use_control_stamp"
+        label="Штамп контролю («КОНТРОЛЬ»)"
+        help="червоний штамп на лівому полі першої сторінки"
+      />
+
+      <UFormField
+        v-if="form.fmt === 'pdf'"
+        label="Штамп обмеження доступу"
+        help="червоний прямокутний штамп у правому верхньому куті"
+      >
+        <USelect
+          v-model="form.restriction_stamp"
+          :items="[
+            { label: 'Без обмежень', value: 'none' },
+            { label: 'Для службового користування (ДСК)', value: 'dsk' },
+            { label: 'Таємно', value: 'secret' },
+            { label: 'Конфіденційно', value: 'confidential' }
+          ]"
+          class="w-full"
+        />
+      </UFormField>
+
+
 
       <div v-if="store.selectedIsScanned.value" class="flex items-center gap-2 p-3 rounded border border-default text-sm text-muted">
         <UIcon name="i-lucide-scan-line" class="text-primary flex-shrink-0" />

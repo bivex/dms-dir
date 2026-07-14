@@ -115,6 +115,10 @@ export type DocForm = {
   acknowledge_user_ids?: number[]
   related_doc_id?: string | null
   use_stamp?: boolean
+  use_incoming_stamp?: boolean
+  use_copy_stamp?: boolean
+  use_control_stamp?: boolean
+  restriction_stamp?: string
 }
 
 export interface CounterpartyEntry {

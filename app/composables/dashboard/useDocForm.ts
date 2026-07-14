@@ -90,6 +90,10 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     pagination_barcode: false,
     use_stamp: false,
     stamp_type: 'none',
+    use_incoming_stamp: false,
+    use_copy_stamp: false,
+    use_control_stamp: false,
+    restriction_stamp: 'none',
     control_executor_id: null,
     acknowledge_user_ids: [],
     related_doc_id: null
@@ -319,7 +323,11 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       approvers: approvers,
       pagination_barcode: !!form.pagination_barcode,
       use_stamp: form.stamp_type !== 'none',
-      stamp_type: form.stamp_type === 'none' ? '' : (form.stamp_type || '')
+      stamp_type: form.stamp_type === 'none' ? '' : (form.stamp_type || ''),
+      use_incoming_stamp: !!form.use_incoming_stamp,
+      use_copy_stamp: !!form.use_copy_stamp,
+      use_control_stamp: !!form.use_control_stamp,
+      restriction_stamp: form.restriction_stamp === 'none' ? '' : (form.restriction_stamp || '')
     }
   }
 
@@ -339,6 +347,10 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     form.pagination_barcode = false
     form.use_stamp = false
     form.stamp_type = 'none'
+    form.use_incoming_stamp = false
+    form.use_copy_stamp = false
+    form.use_control_stamp = false
+    form.restriction_stamp = 'none'
     report.value = null
     pdfaInfo.value = null
     docStatus.value = ''
@@ -390,6 +402,10 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       form.pagination_barcode = !!cj.pagination_barcode
       form.use_stamp = !!cj.use_stamp
       form.stamp_type = String(cj.stamp_type ?? '') || (cj.use_stamp ? 'documents' : 'none')
+      form.use_incoming_stamp = !!cj.use_incoming_stamp
+      form.use_copy_stamp = !!cj.use_copy_stamp
+      form.use_control_stamp = !!cj.use_control_stamp
+      form.restriction_stamp = String(cj.restriction_stamp ?? '') || 'none'
       const b = cj.body
       form.body = Array.isArray(b) ? b.join('\n') : String(b ?? '')
       const addrs = cj.addressees
