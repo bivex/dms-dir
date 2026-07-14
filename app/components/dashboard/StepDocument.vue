@@ -554,7 +554,7 @@ const isCollapsed = ref(false)
         <USelect
           v-model="form.stamp_type"
           :items="[
-            { label: 'Без печатки', value: '' },
+            { label: 'Без печатки', value: 'none' },
             { label: 'Печатка «Для документів»', value: 'documents' },
             { label: 'Печатка «Для договорів»', value: 'contracts' },
             { label: 'Печатка «Відділ кадрів»', value: 'hr' },

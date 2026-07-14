@@ -89,6 +89,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     approverUsers: [] as ApproverUser[],
     pagination_barcode: false,
     use_stamp: false,
+    stamp_type: 'none',
     control_executor_id: null,
     acknowledge_user_ids: [],
     related_doc_id: null
@@ -317,7 +318,8 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       approval_type: form.approval_type,
       approvers: approvers,
       pagination_barcode: !!form.pagination_barcode,
-      use_stamp: !!form.use_stamp
+      use_stamp: form.stamp_type !== 'none',
+      stamp_type: form.stamp_type === 'none' ? '' : (form.stamp_type || '')
     }
   }
 
@@ -336,6 +338,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     form.approverUsers = []
     form.pagination_barcode = false
     form.use_stamp = false
+    form.stamp_type = 'none'
     report.value = null
     pdfaInfo.value = null
     docStatus.value = ''
@@ -386,6 +389,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       if (cj.doc_type) form.doc_type = String(cj.doc_type)
       form.pagination_barcode = !!cj.pagination_barcode
       form.use_stamp = !!cj.use_stamp
+      form.stamp_type = String(cj.stamp_type ?? '') || (cj.use_stamp ? 'documents' : 'none')
       const b = cj.body
       form.body = Array.isArray(b) ? b.join('\n') : String(b ?? '')
       const addrs = cj.addressees
