@@ -119,6 +119,10 @@ export type DocForm = {
   use_copy_stamp?: boolean
   use_control_stamp?: boolean
   restriction_stamp?: string
+  use_copy_mark?: boolean
+  use_archived_stamp?: boolean
+  use_annulled_stamp?: boolean
+  use_urgent_stamp?: boolean
 }
 
 export interface CounterpartyEntry {

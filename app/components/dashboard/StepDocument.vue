@@ -602,6 +602,35 @@ const isCollapsed = ref(false)
         />
       </UFormField>
 
+      <UCheckbox
+        v-if="form.fmt === 'pdf'"
+        v-model="form.use_copy_mark"
+        label="Штамп «КОПІЯ»"
+        help="синій штамп маркування копії у правому верхньому куті"
+      />
+
+      <UCheckbox
+        v-if="form.fmt === 'pdf'"
+        v-model="form.use_archived_stamp"
+        label="Штамп «ДО СПРАВИ»"
+        help="синій архівний штамп у лівому нижньому куті першої сторінки"
+      />
+
+      <UCheckbox
+        v-if="form.fmt === 'pdf'"
+        v-model="form.use_annulled_stamp"
+        label="Штамп «АНУЛЬОВАНО»"
+        help="червоний штамп скасування у верхній частині першої сторінки"
+      />
+
+      <UCheckbox
+        v-if="form.fmt === 'pdf'"
+        v-model="form.use_urgent_stamp"
+        label="Штамп «ТЕРМІНОВО»"
+        help="червоний штамп терміновості у правому верхньому куті"
+      />
+
+
 
 
       <div v-if="store.selectedIsScanned.value" class="flex items-center gap-2 p-3 rounded border border-default text-sm text-muted">

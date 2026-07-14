@@ -94,6 +94,10 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     use_copy_stamp: false,
     use_control_stamp: false,
     restriction_stamp: 'none',
+    use_copy_mark: false,
+    use_archived_stamp: false,
+    use_annulled_stamp: false,
+    use_urgent_stamp: false,
     control_executor_id: null,
     acknowledge_user_ids: [],
     related_doc_id: null
@@ -327,7 +331,11 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       use_incoming_stamp: !!form.use_incoming_stamp,
       use_copy_stamp: !!form.use_copy_stamp,
       use_control_stamp: !!form.use_control_stamp,
-      restriction_stamp: form.restriction_stamp === 'none' ? '' : (form.restriction_stamp || '')
+      restriction_stamp: form.restriction_stamp === 'none' ? '' : (form.restriction_stamp || ''),
+      use_copy_mark: !!form.use_copy_mark,
+      use_archived_stamp: !!form.use_archived_stamp,
+      use_annulled_stamp: !!form.use_annulled_stamp,
+      use_urgent_stamp: !!form.use_urgent_stamp
     }
   }
 
@@ -351,6 +359,10 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     form.use_copy_stamp = false
     form.use_control_stamp = false
     form.restriction_stamp = 'none'
+    form.use_copy_mark = false
+    form.use_archived_stamp = false
+    form.use_annulled_stamp = false
+    form.use_urgent_stamp = false
     report.value = null
     pdfaInfo.value = null
     docStatus.value = ''
@@ -406,6 +418,10 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       form.use_copy_stamp = !!cj.use_copy_stamp
       form.use_control_stamp = !!cj.use_control_stamp
       form.restriction_stamp = String(cj.restriction_stamp ?? '') || 'none'
+      form.use_copy_mark = !!cj.use_copy_mark
+      form.use_archived_stamp = !!cj.use_archived_stamp
+      form.use_annulled_stamp = !!cj.use_annulled_stamp
+      form.use_urgent_stamp = !!cj.use_urgent_stamp
       const b = cj.body
       form.body = Array.isArray(b) ? b.join('\n') : String(b ?? '')
       const addrs = cj.addressees
