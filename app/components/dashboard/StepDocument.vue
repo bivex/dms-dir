@@ -546,6 +546,13 @@ const isCollapsed = ref(false)
         help="службовий штрихкод на кожній сторінці PDF для потокового сканування й звірки комплектності пачки"
       />
 
+      <UCheckbox
+        v-if="form.fmt === 'pdf'"
+        v-model="form.use_stamp"
+        label="Графічна печатка установи"
+        help="синій круглий відбиток печатки організації поверх підпису посадової особи відповідно до ДСТУ 4163"
+      />
+
       <div v-if="store.selectedIsScanned.value" class="flex items-center gap-2 p-3 rounded border border-default text-sm text-muted">
         <UIcon name="i-lucide-scan-line" class="text-primary flex-shrink-0" />
         Скан-копія: оригіналом є завантажений файл. Текст не редагується — документ лише підписують КЕП.
