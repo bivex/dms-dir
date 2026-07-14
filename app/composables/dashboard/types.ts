@@ -102,6 +102,7 @@ export type DocForm = {
   title: string
   date_text: string
   reg_index: string
+  place: string
   body: string
   addressees: string
   sender_contacts: string

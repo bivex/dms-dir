@@ -79,6 +79,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     title: '',
     date_text: '',
     reg_index: '',
+    place: '',
     body: '',
     addressees: '',
     sender_contacts: '',
@@ -319,6 +320,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       title: form.title,
       date_text: form.date_text,
       reg_index: form.reg_index,
+      place: form.place,
       body: form.body.split('\n').filter(Boolean),
       addressees: form.addressees ? form.addressees.split('\n').filter(Boolean) : [],
       sender_contacts: form.sender_contacts || '',
@@ -411,6 +413,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       form.subject_type = String(cj.subject_type ?? form.subject_type)
       form.date_text = String(cj.date_text ?? '')
       form.reg_index = String(cj.reg_index ?? '')
+      form.place = String(cj.place ?? '')
       // doc_type до реєстрації живе лише в content_json (колонка doc_type — null),
       // тож читаємо звідти з фолбеком на колонку.
       if (cj.doc_type) form.doc_type = String(cj.doc_type)

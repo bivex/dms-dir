@@ -566,6 +566,13 @@ const isCollapsed = ref(false)
           class="w-full"
         />
       </UFormField>
+      <UFormField label="Місце складання" help="населений пункт, де складено документ (реквізит 8)">
+        <UInput
+          v-model="form.place"
+          placeholder="м. Харків"
+          class="w-full"
+        />
+      </UFormField>
 
       <UCheckbox
         v-model="store.autoRegister.value"
