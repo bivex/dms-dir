@@ -546,12 +546,24 @@ const isCollapsed = ref(false)
         help="службовий штрихкод на кожній сторінці PDF для потокового сканування й звірки комплектності пачки"
       />
 
-      <UCheckbox
+      <UFormField
         v-if="form.fmt === 'pdf'"
-        v-model="form.use_stamp"
-        label="Графічна печатка установи"
+        label="Печатка установи"
         help="синій круглий відбиток печатки організації поверх підпису посадової особи відповідно до ДСТУ 4163"
-      />
+      >
+        <USelect
+          v-model="form.stamp_type"
+          :items="[
+            { label: 'Без печатки', value: '' },
+            { label: 'Печатка «Для документів»', value: 'documents' },
+            { label: 'Печатка «Для договорів»', value: 'contracts' },
+            { label: 'Печатка «Відділ кадрів»', value: 'hr' },
+            { label: 'Печатка «Канцелярія»', value: 'chancellery' }
+          ]"
+          class="w-full"
+        />
+      </UFormField>
+
 
       <div v-if="store.selectedIsScanned.value" class="flex items-center gap-2 p-3 rounded border border-default text-sm text-muted">
         <UIcon name="i-lucide-scan-line" class="text-primary flex-shrink-0" />
