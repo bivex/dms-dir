@@ -426,7 +426,8 @@ export function createDashboardStore() {
     fetchAttachments: attachments.fetchAttachments,
     uploadAttachment,
     downloadAttachment: attachments.downloadAttachment,
-    removeAttachment: attachments.removeAttachment
+    removeAttachment: attachments.removeAttachment,
+    toggleAttachmentStamp: attachments.toggleAttachmentStamp
   }
 }
 

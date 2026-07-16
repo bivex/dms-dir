@@ -935,14 +935,23 @@ email: example@mail.com" class="w-full" />
               :key="att.id"
               class="flex items-center justify-between p-2 text-sm"
             >
-              <div class="flex items-center gap-2 overflow-hidden">
+              <div class="flex items-center gap-2 overflow-hidden flex-grow">
                 <UIcon name="i-lucide-file-text" class="text-primary flex-shrink-0 w-4 h-4" />
-                <span class="truncate font-medium" :title="att.original_filename">
+                <span class="truncate font-medium max-w-[200px]" :title="att.original_filename">
                   {{ att.original_filename }}
                 </span>
                 <span class="text-xs text-muted flex-shrink-0">
                   ({{ formatBytes(att.size) }})
                 </span>
+                <UCheckbox
+                  v-if="att.mime === 'application/pdf'"
+                  v-model="att.use_incoming_stamp"
+                  label="Штамп вх."
+                  size="xs"
+                  class="ml-3"
+                  :disabled="store.isLocked.value"
+                  @update:model-value="store.toggleAttachmentStamp(form.doc_id, att)"
+                />
               </div>
               <div class="flex items-center gap-1">
                 <UButton

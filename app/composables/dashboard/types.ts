@@ -148,5 +148,6 @@ export interface AttachmentMeta {
   stored_filename: string
   mime: string
   size: number
+  use_incoming_stamp: boolean
   created_at: string
 }

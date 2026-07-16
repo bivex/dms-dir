@@ -104,12 +104,47 @@ export function useAttachments(deps: {
     }
   }
 
+  async function toggleAttachmentStamp(docIdVal: string, att: AttachmentMeta) {
+    if (isLocked.value) {
+      toast.add({ title: 'Документ заблоковано', description: 'Редагування додатків неможливе', color: 'warning' })
+      att.use_incoming_stamp = !att.use_incoming_stamp
+      return
+    }
+    try {
+      const apiBase = useRuntimeConfig().public.apiBase
+      const res = await fetch(`${apiBase}/documents/${docIdVal}/attachments/${att.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token.value ? { Authorization: `Bearer ${token.value}` } : {})
+        },
+        body: JSON.stringify({
+          use_incoming_stamp: att.use_incoming_stamp
+        })
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }))
+        throw new Error(err.detail || `HTTP ${res.status}`)
+      }
+      const updated = await res.json()
+      toast.add({
+        title: updated.use_incoming_stamp ? 'Вхідний штамп увімкнено' : 'Вхідний штамп вимкнено',
+        color: 'success'
+      })
+      await fetchAttachments()
+    } catch (e) {
+      att.use_incoming_stamp = !att.use_incoming_stamp
+      toast.add({ title: 'Помилка оновлення штампа', description: String(e), color: 'error' })
+    }
+  }
+
   return {
     attachments,
     uploading,
     fetchAttachments,
     uploadAttachment,
     downloadAttachment,
-    removeAttachment
+    removeAttachment,
+    toggleAttachmentStamp
   }
 }
