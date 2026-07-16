@@ -138,6 +138,40 @@ export function useAttachments(deps: {
     }
   }
 
+  async function toggleAttachmentCopyStamp(docIdVal: string, att: AttachmentMeta) {
+    if (isLocked.value) {
+      toast.add({ title: 'Документ заблоковано', description: 'Редагування додатків неможливе', color: 'warning' })
+      att.use_copy_stamp = !att.use_copy_stamp
+      return
+    }
+    try {
+      const apiBase = useRuntimeConfig().public.apiBase
+      const res = await fetch(`${apiBase}/documents/${docIdVal}/attachments/${att.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token.value ? { Authorization: `Bearer ${token.value}` } : {})
+        },
+        body: JSON.stringify({
+          use_copy_stamp: att.use_copy_stamp
+        })
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }))
+        throw new Error(err.detail || `HTTP ${res.status}`)
+      }
+      const updated = await res.json()
+      toast.add({
+        title: updated.use_copy_stamp ? 'Штамп КОПІЯ увімкнено' : 'Штамп КОПІЯ вимкнено',
+        color: 'success'
+      })
+      await fetchAttachments()
+    } catch (e) {
+      att.use_copy_stamp = !att.use_copy_stamp
+      toast.add({ title: 'Помилка оновлення штампа копії', description: String(e), color: 'error' })
+    }
+  }
+
   return {
     attachments,
     uploading,
@@ -145,6 +179,7 @@ export function useAttachments(deps: {
     uploadAttachment,
     downloadAttachment,
     removeAttachment,
-    toggleAttachmentStamp
+    toggleAttachmentStamp,
+    toggleAttachmentCopyStamp
   }
 }

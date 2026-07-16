@@ -952,6 +952,15 @@ email: example@mail.com" class="w-full" />
                   :disabled="store.isLocked.value"
                   @update:model-value="store.toggleAttachmentStamp(form.doc_id, att)"
                 />
+                <UCheckbox
+                  v-if="att.mime === 'application/pdf'"
+                  v-model="att.use_copy_stamp"
+                  label="Копія"
+                  size="xs"
+                  class="ml-3"
+                  :disabled="store.isLocked.value"
+                  @update:model-value="store.toggleAttachmentCopyStamp(form.doc_id, att)"
+                />
               </div>
               <div class="flex items-center gap-1">
                 <UButton

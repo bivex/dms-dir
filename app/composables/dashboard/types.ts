@@ -149,5 +149,6 @@ export interface AttachmentMeta {
   mime: string
   size: number
   use_incoming_stamp: boolean
+  use_copy_stamp: boolean
   created_at: string
 }
