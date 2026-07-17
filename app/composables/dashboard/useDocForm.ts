@@ -460,7 +460,8 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
   }
 
   async function downloadAsice() {
-    const url = `${useRuntimeConfig().public.apiBase}/documents/${form.doc_id}/download/asice`
+    const { token } = useAuth()
+    const url = `${useRuntimeConfig().public.apiBase}/documents/${form.doc_id}/download/asice?token=${token.value ?? ''}`
     window.open(url, '_blank')
   }
 
