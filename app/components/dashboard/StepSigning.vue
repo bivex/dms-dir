@@ -37,7 +37,7 @@ async function downloadSignerManifest(signerIndex: number) {
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${store.form.doc_id}_manifest_${signerIndex + 1}.xml`
+    a.download = `${store.form.doc_id}_signature_${signerIndex + 1}.xml`
     document.body.appendChild(a)
     a.click()
     a.remove()
