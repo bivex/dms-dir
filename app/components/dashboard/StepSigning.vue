@@ -25,6 +25,28 @@ async function downloadSignerSig(signerIndex: number) {
     toast.add({ title: 'Помилка завантаження підпису', description: String(e), color: 'error' })
   }
 }
+
+async function downloadSignerManifest(signerIndex: number) {
+  try {
+    const apiBase = useRuntimeConfig().public.apiBase
+    const res = await fetch(`${apiBase}/documents/${store.form.doc_id}/signers/${signerIndex}/download-manifest?token=${store.token.value ?? ''}`, {
+      headers: store.token.value ? { Authorization: `Bearer ${store.token.value}` } : {}
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const blob = await res.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${store.form.doc_id}_manifest_${signerIndex + 1}.xml`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    const toast = useToast()
+    toast.add({ title: 'Помилка завантаження маніфесту', description: String(e), color: 'error' })
+  }
+}
 </script>
 
 <template>
@@ -109,17 +131,26 @@ async function downloadSignerSig(signerIndex: number) {
           >
             Оригінал документа
           </UButton>
-          <UButton
-            v-for="(s, idx) in store.signerList.value.filter(s => s.status === 'signed')"
-            :key="'sig-btn-' + idx"
-            icon="i-lucide-download"
-            color="neutral"
-            variant="outline"
-            size="sm"
-            @click="downloadSignerSig(store.signerList.value.indexOf(s))"
-          >
-            Підпис {{ store.signerList.value.filter(x => x.status === 'signed').length > 1 ? (idx + 1) : '' }} (.p7s)
-          </UButton>
+          <template v-for="(s, idx) in store.signerList.value.filter(s => s.status === 'signed')" :key="'sig-btn-' + idx">
+            <UButton
+              icon="i-lucide-download"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              @click="downloadSignerSig(store.signerList.value.indexOf(s))"
+            >
+              Підпис {{ store.signerList.value.filter(x => x.status === 'signed').length > 1 ? (idx + 1) : '' }} (.p7s)
+            </UButton>
+            <UButton
+              icon="i-lucide-file-code"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              @click="downloadSignerManifest(store.signerList.value.indexOf(s))"
+            >
+              Маніфест {{ store.signerList.value.filter(x => x.status === 'signed').length > 1 ? (idx + 1) : '' }} (.xml)
+            </UButton>
+          </template>
           <UButton
             icon="i-lucide-file-signature"
             color="neutral"
@@ -149,15 +180,24 @@ async function downloadSignerSig(signerIndex: number) {
               <span class="font-medium text-default">{{ s.name }}</span>
               <span class="text-muted truncate">({{ s.position || s.signer_type }})</span>
             </div>
-            <UButton
-              v-if="s.status === 'signed'"
-              icon="i-lucide-download"
-              size="xs"
-              color="neutral"
-              variant="ghost"
-              title="Завантажити підпис .p7s"
-              @click="downloadSignerSig(idx)"
-            />
+            <div v-if="s.status === 'signed'" class="flex items-center gap-0.5">
+              <UButton
+                icon="i-lucide-file-code"
+                size="xs"
+                color="neutral"
+                variant="ghost"
+                title="Завантажити маніфест .xml"
+                @click="downloadSignerManifest(idx)"
+              />
+              <UButton
+                icon="i-lucide-download"
+                size="xs"
+                color="neutral"
+                variant="ghost"
+                title="Завантажити підпис .p7s"
+                @click="downloadSignerSig(idx)"
+              />
+            </div>
             <span v-else class="text-[10px] text-muted pr-2">очікує</span>
           </div>
         </div>
