@@ -7,7 +7,7 @@ const isCollapsed = ref(false)
 async function downloadSignerSig(signerIndex: number) {
   try {
     const apiBase = useRuntimeConfig().public.apiBase
-    const res = await fetch(`${apiBase}/documents/${store.form.doc_id}/signers/${signerIndex}/download-signature`, {
+    const res = await fetch(`${apiBase}/documents/${store.form.doc_id}/signers/${signerIndex}/download-signature?token=${store.token.value ?? ''}`, {
       headers: store.token.value ? { Authorization: `Bearer ${store.token.value}` } : {}
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
