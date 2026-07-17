@@ -980,6 +980,14 @@ email: example@mail.com" class="w-full" />
                   @click="store.downloadAttachment(att)"
                 />
                 <UButton
+                  icon="i-lucide-pen-tool"
+                  size="xs"
+                  color="success"
+                  variant="ghost"
+                  title="Підписати (.p7s)"
+                  @click="store.signAttachmentFile(att)"
+                />
+                <UButton
                   v-if="!store.isLocked.value"
                   icon="i-lucide-trash-2"
                   size="xs"

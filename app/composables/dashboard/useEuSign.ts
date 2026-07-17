@@ -178,6 +178,73 @@ export function useEuSign(deps: {
     }
   }
 
+  async function signAttachmentFile(att: any) {
+    if (!euReady.value && keySource.value === 'file') {
+      toast.add({ title: 'EUSign не готовий', description: 'Будь ласка, завантажте файл ключа та введіть пароль.', color: 'warning' })
+      return
+    }
+    signing.value = true
+    signStep.value = 'key'
+    try {
+      const apiBase = useRuntimeConfig().public.apiBase
+      // 1. Завантажуємо байти додатка
+      const attRes = await fetch(`${apiBase}/documents/${form.doc_id}/attachments/${att.id}`, {
+        headers: { Authorization: `Bearer ${token.value ?? ''}` }
+      })
+      if (!attRes.ok) throw new Error('Не вдалося завантажити файл додатка: ' + await attRes.text())
+      const fileBlob = await attRes.blob()
+      const fileBytes = new Uint8Array(await fileBlob.arrayBuffer())
+
+      let cmsB64: string
+      if (keySource.value === 'token') {
+        if (!euWidget) throw new Error('Віджет апаратного токена не ініціалізовано')
+        await euWidget.ReadPrivateKey()
+        signStep.value = 'sign'
+        const EU = (window as any).EndUser
+        cmsB64 = await euWidget.SignData(
+          fileBytes,
+          true, // external/detached = true
+          true, // asBase64String = true
+          EU.SignAlgo.DSTU4145WithGOST34311,
+          null,
+          EU.SignType.CAdES_BES
+        )
+      } else {
+        if (!euSignFactory) throw new Error('Модуль EUSign не завантажено')
+        euSignFactory.setCASettings(caIndex.value >= 0 ? caIndex.value : -1)
+        euSignFactory.pkFilePassword = keyPass.value
+        euSignFactory.pkFileItemIndex = -1
+        euSignFactory.readPrivateKeyButtonClick()
+        if (!euSignFactory.pkReaded) throw new Error('Не вдалося зчитати ключ. Перевірте пароль та обраний файл.')
+
+        signStep.value = 'sign'
+        // Другий параметр false — detached-підпис (.p7s)
+        cmsB64 = euSignFactory.signData(fileBytes, false, true, 'def')
+      }
+
+      if (!cmsB64) throw new Error('Підпис порожній')
+
+      // 2. Створюємо файл підпису та ініціюємо завантаження
+      const rawCms = Uint8Array.from(atob(cmsB64), c => c.charCodeAt(0))
+      const sigBlob = new Blob([rawCms], { type: 'application/pkcs7-signature' })
+      const url = window.URL.createObjectURL(sigBlob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${att.original_filename || att.stored_filename}.p7s`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+
+      toast.add({ title: 'Підпис успішно створено', description: 'Файл .p7s завантажено на ваш пристрій', color: 'success' })
+    } catch (e: any) {
+      toast.add({ title: 'Помилка підписання файлу', description: e.message || String(e), color: 'error' })
+    } finally {
+      signStep.value = ''
+      signing.value = false
+    }
+  }
+
   return {
     euReady,
     euStatus,
@@ -189,6 +256,7 @@ export function useEuSign(deps: {
     signing,
     signStep,
     signCurrent,
+    signAttachmentFile,
     initWidget,
     onKeyFile,
     bootstrap

@@ -308,6 +308,7 @@ export function createDashboardStore() {
     signing: euSign.signing,
     signStep: euSign.signStep,
     signCurrent: euSign.signCurrent,
+    signAttachmentFile: euSign.signAttachmentFile,
     initWidget: euSign.initWidget,
     onKeyFile: euSign.onKeyFile,
     bootstrapEuSign: euSign.bootstrap,

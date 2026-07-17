@@ -31,7 +31,8 @@ describe('EUSign JS Connector (.p7s signing & other APIs)', () => {
       'widget-container',
       'widget-iframe',
       'https://eu.iit.com.ua/sign-widget/v20200922/',
-      1 // ReadPKey form type
+      1, // ReadPKey form type
+      null
     );
 
     iframeElement = document.getElementById('widget-iframe') as HTMLIFrameElement;
