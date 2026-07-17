@@ -89,7 +89,7 @@ async function downloadSignerSig(signerIndex: number) {
           <span>Документ успішно підписано</span>
         </div>
         <div class="text-xs text-muted leading-relaxed">
-          Усі підписи накладено. Ви можете завантажити оригінал документа, об'єднаний PDF з візами або повний криптографічний контейнер ASiC-E.
+          Усі підписи накладено. Ви можете завантажити оригінал документа, окремі файли підписів (.p7s), об'єднаний PDF з візами або повний криптографічний контейнер ASiC-E.
         </div>
         <div class="flex flex-wrap gap-2 pt-1">
           <UButton
@@ -108,6 +108,17 @@ async function downloadSignerSig(signerIndex: number) {
             @click="store.downloadDoc()"
           >
             Оригінал документа
+          </UButton>
+          <UButton
+            v-for="(s, idx) in store.signerList.value.filter(s => s.status === 'signed')"
+            :key="'sig-btn-' + idx"
+            icon="i-lucide-download"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            @click="downloadSignerSig(store.signerList.value.indexOf(s))"
+          >
+            Підпис {{ store.signerList.value.filter(x => x.status === 'signed').length > 1 ? (idx + 1) : '' }} (.p7s)
           </UButton>
           <UButton
             icon="i-lucide-file-signature"
