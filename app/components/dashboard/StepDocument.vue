@@ -988,6 +988,14 @@ email: example@mail.com" class="w-full" />
                   @click="store.signAttachmentFile(att)"
                 />
                 <UButton
+                  icon="i-lucide-file-archive"
+                  size="xs"
+                  color="success"
+                  variant="ghost"
+                  title="Підписати (.asice)"
+                  @click="store.signAttachmentFile(att, 'asice')"
+                />
+                <UButton
                   v-if="!store.isLocked.value"
                   icon="i-lucide-trash-2"
                   size="xs"

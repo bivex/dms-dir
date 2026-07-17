@@ -178,7 +178,7 @@ export function useEuSign(deps: {
     }
   }
 
-  async function signAttachmentFile(att: any) {
+  async function signAttachmentFile(att: any, packAsic?: 'asice' | 'asics') {
     if (!euReady.value && keySource.value === 'file') {
       toast.add({ title: 'EUSign не готовий', description: 'Будь ласка, завантажте файл ключа та введіть пароль.', color: 'warning' })
       return
@@ -224,19 +224,43 @@ export function useEuSign(deps: {
 
       if (!cmsB64) throw new Error('Підпис порожній')
 
-      // 2. Створюємо файл підпису та ініціюємо завантаження
-      const rawCms = Uint8Array.from(atob(cmsB64), c => c.charCodeAt(0))
-      const sigBlob = new Blob([rawCms], { type: 'application/pkcs7-signature' })
-      const url = window.URL.createObjectURL(sigBlob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${att.original_filename || att.stored_filename}.p7s`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
+      if (packAsic) {
+        // 2a. Надсилаємо на бекенд для пакування в ASiC-S / ASiC-E
+        signStep.value = 'send'
+        const packRes = await fetch(`${apiBase}/documents/${form.doc_id}/attachments/${att.id}/pack-asic`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token.value ?? ''}`
+          },
+          body: JSON.stringify({ signature_b64: cmsB64, type: packAsic })
+        })
+        if (!packRes.ok) throw new Error('Помилка формування ASiC: ' + await packRes.text())
+        const asicBlob = await packRes.blob()
+        const url = window.URL.createObjectURL(asicBlob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${att.original_filename || att.stored_filename}.${packAsic}`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        window.URL.revokeObjectURL(url)
+        toast.add({ title: `Контейнер ${packAsic.toUpperCase()} успішно завантажено`, color: 'success' })
+      } else {
+        // 2b. Створюємо файл підпису та ініціюємо завантаження
+        const rawCms = Uint8Array.from(atob(cmsB64), c => c.charCodeAt(0))
+        const sigBlob = new Blob([rawCms], { type: 'application/pkcs7-signature' })
+        const url = window.URL.createObjectURL(sigBlob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${att.original_filename || att.stored_filename}.p7s`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        window.URL.revokeObjectURL(url)
 
-      toast.add({ title: 'Підпис успішно створено', description: 'Файл .p7s завантажено на ваш пристрій', color: 'success' })
+        toast.add({ title: 'Підпис успішно створено', description: 'Файл .p7s завантажено на ваш пристрій', color: 'success' })
+      }
     } catch (e: any) {
       toast.add({ title: 'Помилка підписання файлу', description: e.message || String(e), color: 'error' })
     } finally {
