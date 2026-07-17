@@ -188,7 +188,7 @@ export function useEuSign(deps: {
     try {
       const apiBase = useRuntimeConfig().public.apiBase
       // 1. Завантажуємо байти додатка
-      const attRes = await fetch(`${apiBase}/documents/${form.doc_id}/attachments/${att.id}`, {
+      const attRes = await fetch(`${apiBase}/documents/${form.doc_id}/attachments/${att.id}?token=${token.value ?? ''}`, {
         headers: { Authorization: `Bearer ${token.value ?? ''}` }
       })
       if (!attRes.ok) throw new Error('Не вдалося завантажити файл додатка: ' + await attRes.text())
@@ -227,7 +227,7 @@ export function useEuSign(deps: {
       if (packAsic) {
         // 2a. Надсилаємо на бекенд для пакування в ASiC-S / ASiC-E
         signStep.value = 'send'
-        const packRes = await fetch(`${apiBase}/documents/${form.doc_id}/attachments/${att.id}/pack-asic`, {
+        const packRes = await fetch(`${apiBase}/documents/${form.doc_id}/attachments/${att.id}/pack-asic?token=${token.value ?? ''}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
