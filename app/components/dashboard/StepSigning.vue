@@ -3,6 +3,28 @@ import { useDashboard } from '~/composables/dashboard/useDashboard'
 
 const store = useDashboard()
 const isCollapsed = ref(false)
+
+async function downloadSignerSig(signerIndex: number) {
+  try {
+    const apiBase = useRuntimeConfig().public.apiBase
+    const res = await fetch(`${apiBase}/documents/${store.form.doc_id}/signers/${signerIndex}/download-signature`, {
+      headers: store.token.value ? { Authorization: `Bearer ${store.token.value}` } : {}
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const blob = await res.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${store.form.doc_id}_signature_${signerIndex + 1}.p7s`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    const toast = useToast()
+    toast.add({ title: 'Помилка завантаження підпису', description: String(e), color: 'error' })
+  }
+}
 </script>
 
 <template>
@@ -58,6 +80,76 @@ const isCollapsed = ref(false)
           <span>Додайте хоча б одного підписанта у картці документа («Підписанти») і збережіть картку, перш ніж подавати у чергу.</span>
         </div>
         <UTimeline v-else :items="store.signerTimeline.value" />
+      </div>
+
+      <!-- Скачування результатів підписання (коли документ повністю підписано) -->
+      <div v-if="store.docStatus.value === 'signed'" class="p-4 rounded-lg border border-success/30 bg-success/5 space-y-3">
+        <div class="font-semibold text-sm text-success flex items-center gap-1.5">
+          <UIcon name="i-lucide-circle-check" />
+          <span>Документ успішно підписано</span>
+        </div>
+        <div class="text-xs text-muted leading-relaxed">
+          Усі підписи накладено. Ви можете завантажити оригінал документа, об'єднаний PDF з візами або повний криптографічний контейнер ASiC-E.
+        </div>
+        <div class="flex flex-wrap gap-2 pt-1">
+          <UButton
+            icon="i-lucide-file-archive"
+            color="success"
+            size="sm"
+            @click="store.downloadAsice()"
+          >
+            Завантажити ASiC-E (.asice)
+          </UButton>
+          <UButton
+            icon="i-lucide-file-text"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            @click="store.downloadDoc()"
+          >
+            Оригінал документа
+          </UButton>
+          <UButton
+            icon="i-lucide-file-signature"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            @click="store.downloadMergedPdf(true)"
+          >
+            PDF з візами
+          </UButton>
+        </div>
+      </div>
+
+      <!-- Список накладених підписів (.p7s) -->
+      <div v-if="store.signerList.value.some(s => s.status === 'signed')" class="space-y-2">
+        <div class="text-xs font-semibold text-muted uppercase">Накладені підписи (.p7s)</div>
+        <div class="divide-y divide-border border rounded-md">
+          <div
+            v-for="(s, idx) in store.signerList.value"
+            :key="s.name + idx"
+            class="flex items-center justify-between p-2 text-xs"
+          >
+            <div class="flex items-center gap-1.5 truncate">
+              <UIcon
+                :name="s.status === 'signed' ? 'i-lucide-check-circle' : 'i-lucide-clock'"
+                :class="s.status === 'signed' ? 'text-success' : 'text-muted'"
+              />
+              <span class="font-medium text-default">{{ s.name }}</span>
+              <span class="text-muted truncate">({{ s.position || s.signer_type }})</span>
+            </div>
+            <UButton
+              v-if="s.status === 'signed'"
+              icon="i-lucide-download"
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              title="Завантажити підпис .p7s"
+              @click="downloadSignerSig(idx)"
+            />
+            <span v-else class="text-[10px] text-muted pr-2">очікує</span>
+          </div>
+        </div>
       </div>
 
       <USeparator />
