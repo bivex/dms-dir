@@ -79,6 +79,7 @@ const CAT_COLOR: Record<string, string> = {
   zvernennya:   'warning',
   dohovirni:    'secondary',
   normatyvni:   'neutral',
+  stylevi:      'amber',
 }
 
 function catColor(catId: string) { return CAT_COLOR[catId] ?? 'neutral' }

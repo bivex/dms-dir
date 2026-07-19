@@ -36,6 +36,7 @@ export const TEMPLATE_CATEGORIES: TemplateCategory[] = [
   { id: 'zvernennya',   label: 'Звернення громадян',       icon: 'i-lucide-message-square-text' },
   { id: 'dohovirni',    label: 'Договірні',               icon: 'i-lucide-handshake' },
   { id: 'normatyvni',   label: 'Нормативні',              icon: 'i-lucide-book-open' },
+  { id: 'stylevi',      label: 'Стилі та підказки',       icon: 'i-lucide-lightbulb' },
 ]
 
 export function useTemplates(deps: {
