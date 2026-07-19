@@ -9,7 +9,7 @@ function handleCategoryClick(catId: string) {
     store.openCalendar()
   } else {
     store.activeCategory.value = catId
-    if (catId === 'counterparties' || catId === 'approvals' || catId === 'tasks' || catId === 'users' || catId === 'processes') {
+    if (catId === 'counterparties' || catId === 'approvals' || catId === 'tasks' || catId === 'users' || catId === 'processes' || catId === 'templates') {
       store.selectedId.value = null
       store.creatingDoc.value = false
     }
@@ -93,7 +93,8 @@ function handleCategoryClick(catId: string) {
         v-for="cat in [
           { id: 'counterparties', label: 'Контрагенти', icon: 'i-lucide-users' },
           { id: 'users', label: 'Користувачі', icon: 'i-lucide-user-cog' },
-          { id: 'processes', label: 'Процеси', icon: 'i-lucide-workflow' }
+          { id: 'processes', label: 'Процеси', icon: 'i-lucide-workflow' },
+          { id: 'templates', label: 'Шаблони', icon: 'i-lucide-layout-template' }
         ]"
         :key="cat.id"
         block

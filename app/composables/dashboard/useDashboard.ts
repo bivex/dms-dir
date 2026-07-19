@@ -19,6 +19,7 @@ import { useUsers } from './useUsers'
 import { useProcesses } from './useProcesses'
 import { useImport } from './useImport'
 import { useAttachments } from './useAttachments'
+import { useTemplates } from './useTemplates'
 import { onMounted } from 'vue'
 
 /**
@@ -147,6 +148,7 @@ export function createDashboardStore() {
     selectDoc: (docId: string) => selectDoc(docId)
   })
   const tasks = useTasks({ apiFetch })
+  const templateStore = useTemplates({ apiFetch })
 
   onMounted(() => {
     journals.fetchJournals()
@@ -429,7 +431,16 @@ export function createDashboardStore() {
     downloadAttachment: attachments.downloadAttachment,
     removeAttachment: attachments.removeAttachment,
     toggleAttachmentStamp: attachments.toggleAttachmentStamp,
-    toggleAttachmentCopyStamp: attachments.toggleAttachmentCopyStamp
+    toggleAttachmentCopyStamp: attachments.toggleAttachmentCopyStamp,
+    // templates
+    docTemplates: templateStore.templates,
+    templatesLoaded: templateStore.templatesLoaded,
+    savingTemplate: templateStore.savingTemplate,
+    reloadTemplates: templateStore.reloadTemplates,
+    createTemplate: templateStore.createTemplate,
+    saveTemplate: templateStore.saveTemplate,
+    duplicateTemplate: templateStore.duplicateTemplate,
+    deleteTemplate: templateStore.deleteTemplate
   }
 }
 

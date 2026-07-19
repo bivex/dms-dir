@@ -27,7 +27,7 @@ onMounted(async () => {
   <div class="flex h-screen overflow-hidden bg-background">
     <DashboardSidebar />
 
-    <DashboardDocListPanel v-if="store.activeCategory.value !== 'counterparties' && store.activeCategory.value !== 'tasks' && store.activeCategory.value !== 'users' && store.activeCategory.value !== 'processes'" />
+    <DashboardDocListPanel v-if="store.activeCategory.value !== 'counterparties' && store.activeCategory.value !== 'tasks' && store.activeCategory.value !== 'users' && store.activeCategory.value !== 'processes' && store.activeCategory.value !== 'templates'" />
 
     <!-- ГОЛОВНА ОБЛАСТЬ -->
     <div class="flex-1 overflow-y-auto">
@@ -42,6 +42,9 @@ onMounted(async () => {
 
       <!-- ЗАВДАННЯ -->
       <DashboardTasksView v-else-if="store.activeCategory.value === 'tasks'" />
+
+      <!-- ШАБЛОНИ -->
+      <DashboardTemplatesView v-else-if="store.activeCategory.value === 'templates'" />
 
       <!-- КАЛЕНДАР ДОКУМЕНТІВ -->
       <DashboardCalendarView v-else-if="store.activeCategory.value === 'calendar' && !store.selectedId.value" />
