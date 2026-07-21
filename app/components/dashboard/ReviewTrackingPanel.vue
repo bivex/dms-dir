@@ -169,7 +169,7 @@
         </div>
 
         <!-- Форма введення/редагування дати та коментаря -->
-        <div v-if="showResponseForm" class="rtp-response-form bg-neutral-50 dark:bg-neutral-850 p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 flex flex-col gap-3">
+        <div v-if="showResponseForm" class="rtp-response-form bg-neutral-100 dark:bg-neutral-800 p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 flex flex-col gap-3">
           <span class="text-xs font-semibold text-neutral-600 dark:text-neutral-300">
             {{ review.review_status === 'responded' ? 'Редагування відповіді' : 'Реєстрація відповіді від адресата' }}
           </span>
