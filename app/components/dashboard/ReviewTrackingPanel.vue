@@ -119,9 +119,9 @@
       </div>
 
       <!-- Actions / Response Form -->
-      <div v-if="review.review_status !== 'responded' && review.review_status !== 'not_applicable'" class="flex flex-col gap-3">
-        <!-- Кнопки дій -->
-        <div v-if="!showResponseForm" class="rtp-actions">
+      <div v-if="review.review_status !== 'not_applicable'" class="flex flex-col gap-3">
+        <!-- Кнопки дій для не-responded стану -->
+        <div v-if="!showResponseForm && review.review_status !== 'responded'" class="rtp-actions">
           <UButton
             icon="i-lucide-check"
             color="success"
@@ -144,9 +144,35 @@
           </UButton>
         </div>
 
-        <!-- Форма введення дати та коментаря -->
-        <div v-else class="rtp-response-form bg-neutral-50 dark:bg-neutral-850 p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 flex flex-col gap-3">
-          <span class="text-xs font-semibold text-neutral-600 dark:text-neutral-300">Реєстрація відповіді від адресата</span>
+        <!-- Відображення успішного responded стану з можливістю редагування -->
+        <div v-if="!showResponseForm && review.review_status === 'responded'" class="rtp-responded flex items-center justify-between bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-900">
+          <div class="flex items-start gap-2.5">
+            <UIcon name="i-lucide-check-circle-2" class="text-green-500 text-xl mt-0.5" />
+            <div class="flex flex-col gap-0.5">
+              <span class="text-green-800 dark:text-green-200 font-semibold text-sm">Відповідь отримана</span>
+              <span class="text-xs text-green-700 dark:text-green-300">
+                Дата: {{ review.response_received_at ? formatDate(review.response_received_at) : '—' }}
+              </span>
+              <span v-if="review.review_note" class="text-xs text-neutral-500 dark:text-neutral-400 italic mt-0.5">
+                «{{ review.review_note }}»
+              </span>
+            </div>
+          </div>
+          <UButton
+            icon="i-lucide-pencil"
+            color="success"
+            variant="ghost"
+            size="xs"
+            title="Змінити дату або коментар"
+            @click="openResponseForm"
+          />
+        </div>
+
+        <!-- Форма введення/редагування дати та коментаря -->
+        <div v-if="showResponseForm" class="rtp-response-form bg-neutral-50 dark:bg-neutral-850 p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 flex flex-col gap-3">
+          <span class="text-xs font-semibold text-neutral-600 dark:text-neutral-300">
+            {{ review.review_status === 'responded' ? 'Редагування відповіді' : 'Реєстрація відповіді від адресата' }}
+          </span>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <UFormField label="Дата отримання відповіді">
               <UInput
@@ -182,12 +208,6 @@
             </UButton>
           </div>
         </div>
-      </div>
-
-      <!-- Responded state -->
-      <div v-if="review.review_status === 'responded'" class="rtp-responded">
-        <UIcon name="i-lucide-check-circle-2" class="text-green-500 text-xl" />
-        <span class="text-green-700 font-medium">Відповідь отримана та зафіксована</span>
       </div>
     </div>
   </div>
@@ -228,11 +248,17 @@ watch(() => props.docId, () => {
 })
 
 function openResponseForm() {
-  // Сьогоднішня дата в локальному часовому поясі (YYYY-MM-DD)
-  const localDate = new Date()
-  const offset = localDate.getTimezoneOffset()
-  const localIso = new Date(localDate.getTime() - (offset*60*1000)).toISOString().split('T')[0]
-  responseDate.value = localIso
+  if (review.value?.response_received_at) {
+    // Конвертуємо збережену дату в YYYY-MM-DD
+    const d = new Date(review.value.response_received_at)
+    const offset = d.getTimezoneOffset()
+    responseDate.value = new Date(d.getTime() - (offset*60*1000)).toISOString().split('T')[0]
+  } else {
+    // Сьогоднішня дата в локальному часовому поясі (YYYY-MM-DD)
+    const localDate = new Date()
+    const offset = localDate.getTimezoneOffset()
+    responseDate.value = new Date(localDate.getTime() - (offset*60*1000)).toISOString().split('T')[0]
+  }
   responseNote.value = review.value?.review_note || ''
   showResponseForm.value = true
 }
