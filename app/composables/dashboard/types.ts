@@ -121,6 +121,7 @@ export type DocForm = {
   use_incoming_stamp?: boolean
   use_copy_stamp?: boolean
   use_control_stamp?: boolean
+  use_handwritten_date_index?: boolean
   restriction_stamp?: string
   stamp_type?: string
   use_copy_mark?: boolean

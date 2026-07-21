@@ -94,6 +94,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     use_incoming_stamp: false,
     use_copy_stamp: false,
     use_control_stamp: false,
+    use_handwritten_date_index: true,
     restriction_stamp: 'none',
     use_copy_mark: false,
     use_archived_stamp: false,
@@ -334,6 +335,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       use_incoming_stamp: !!form.use_incoming_stamp,
       use_copy_stamp: !!form.use_copy_stamp,
       use_control_stamp: !!form.use_control_stamp,
+      use_handwritten_date_index: !!form.use_handwritten_date_index,
       restriction_stamp: form.restriction_stamp === 'none' ? '' : (form.restriction_stamp || ''),
       use_copy_mark: !!form.use_copy_mark,
       use_archived_stamp: !!form.use_archived_stamp,
@@ -362,6 +364,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     form.use_incoming_stamp = false
     form.use_copy_stamp = false
     form.use_control_stamp = false
+    form.use_handwritten_date_index = true
     form.restriction_stamp = 'none'
     form.use_copy_mark = false
     form.use_archived_stamp = false
@@ -423,6 +426,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       form.use_incoming_stamp = !!cj.use_incoming_stamp
       form.use_copy_stamp = !!cj.use_copy_stamp
       form.use_control_stamp = !!cj.use_control_stamp
+      form.use_handwritten_date_index = cj.use_handwritten_date_index !== undefined ? !!cj.use_handwritten_date_index : true
       form.restriction_stamp = String(cj.restriction_stamp ?? '') || 'none'
       form.use_copy_mark = !!cj.use_copy_mark
       form.use_archived_stamp = !!cj.use_archived_stamp

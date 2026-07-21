@@ -654,6 +654,13 @@ async function handleGenerateStatusRequest() {
         help="червоний штамп на лівому полі першої сторінки"
       />
 
+      <UCheckbox
+        v-if="form.fmt === 'pdf'"
+        v-model="form.use_handwritten_date_index"
+        label="Рукописна дата та індекс"
+        help="імітація синього чорнила кулькової ручки прописом секретаря"
+      />
+
       <UFormField
         v-if="form.fmt === 'pdf'"
         label="Штамп обмеження доступу"
