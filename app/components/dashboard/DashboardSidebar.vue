@@ -7,8 +7,16 @@ const { logout } = useAuth()
 function handleCategoryClick(catId: string) {
   if (catId === 'calendar') {
     store.openCalendar()
+  } else if (catId === 'overdue_control') {
+    store.activeCategory.value = 'all'
+    store.statusFilter.value = 'overdue'
+    store.selectedId.value = null
+    store.creatingDoc.value = false
   } else {
     store.activeCategory.value = catId
+    if (catId === 'all') {
+      store.statusFilter.value = 'all'
+    }
     if (catId === 'counterparties' || catId === 'approvals' || catId === 'tasks' || catId === 'users' || catId === 'processes' || catId === 'templates') {
       store.selectedId.value = null
       store.creatingDoc.value = false
@@ -64,6 +72,7 @@ function handleCategoryClick(catId: string) {
       <UButton
         v-for="cat in [
           { id: 'all', label: 'Всі документи', icon: 'i-lucide-files' },
+          { id: 'overdue_control', label: 'На контролі', icon: 'i-lucide-clock-alert' },
           { id: 'favorites', label: 'Обрані', icon: 'i-lucide-star' },
           { id: 'approvals', label: 'Погодження', icon: 'i-lucide-user-check' },
           { id: 'tasks', label: 'Завдання', icon: 'i-lucide-check-square' },
@@ -73,13 +82,22 @@ function handleCategoryClick(catId: string) {
         :key="cat.id"
         block
         variant="ghost"
-        :color="store.activeCategory.value === cat.id ? 'primary' : 'neutral'"
+        :color="
+          cat.id === 'overdue_control' && store.statusFilter.value === 'overdue' && store.activeCategory.value === 'all'
+            ? 'primary'
+            : cat.id === 'all' && store.statusFilter.value !== 'overdue' && store.activeCategory.value === 'all'
+              ? 'primary'
+              : cat.id !== 'all' && cat.id !== 'overdue_control' && store.activeCategory.value === cat.id
+                ? 'primary'
+                : 'neutral'
+        "
         :icon="cat.icon"
         class="justify-start mb-0.5"
         @click="handleCategoryClick(cat.id)"
       >
         {{ cat.label }}
         <UBadge v-if="cat.id === 'all'" :label="String(store.activeCount.value)" variant="subtle" size="xs" class="ml-auto" />
+        <UBadge v-else-if="cat.id === 'overdue_control' && store.statusCounts.value?.overdue" :label="String(store.statusCounts.value.overdue)" color="error" variant="subtle" size="xs" class="ml-auto" />
         <UBadge v-else-if="cat.id === 'approvals' && store.myApprovals.value.length" :label="String(store.myApprovals.value.length)" color="warning" variant="subtle" size="xs" class="ml-auto" />
         <UBadge v-else-if="cat.id === 'tasks' && store.myTasks.value.filter(t => t.status !== 'completed').length" :label="String(store.myTasks.value.filter(t => t.status !== 'completed').length)" color="error" variant="subtle" size="xs" class="ml-auto" />
         <UBadge v-else-if="cat.id === 'favorites' && store.favoritesCount.value" :label="String(store.favoritesCount.value)" color="warning" variant="subtle" size="xs" class="ml-auto" />

@@ -54,9 +54,10 @@ export function useDocuments(deps: {
   )
 
   const _isOverdue = (d: DocEntry): boolean => {
-    // прострочений: не підписаний/не опублікований і дата реєстрації + умовний термін минула.
-    // У моделі немає явного дедлайну документа, тож вважаємо простроченими ті,
-    // що зависли в pending_* понад 7 днів від created_at.
+    // 1. Прострочений трекінг відповіді від адресата ( review_status === 'overdue' )
+    if (d.review_status === 'overdue') return true
+
+    // 2. Стара логіка: завислі на погодженні чи підписі понад 7 днів
     if (d.status === 'signed' || d.status === 'published' || d.status === 'rejected') return false
     if (!d.status.startsWith('pending')) return false
     const created = d.created_at ? new Date(d.created_at).getTime() : 0

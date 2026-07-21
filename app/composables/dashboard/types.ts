@@ -15,6 +15,8 @@ export interface DocEntry {
   org_name?: string | null
   archived?: boolean
   folder_id?: number | null
+  review_status?: string | null
+  expected_response_date?: string | null
 }
 
 export interface FolderEntry {
