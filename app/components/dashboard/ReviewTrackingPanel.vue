@@ -118,28 +118,70 @@
         <span>{{ review.review_note }}</span>
       </div>
 
-      <!-- Actions -->
-      <div v-if="review.review_status !== 'responded' && review.review_status !== 'not_applicable'" class="rtp-actions">
-        <UButton
-          icon="i-lucide-check"
-          color="success"
-          variant="soft"
-          size="sm"
-          :loading="loading"
-          @click="handleMarkResponded"
-        >
-          Відповідь отримана
-        </UButton>
-        <UButton
-          icon="i-lucide-x"
-          color="neutral"
-          variant="ghost"
-          size="sm"
-          :loading="loading"
-          @click="handleMarkNotApplicable"
-        >
-          Трекінг не потрібен
-        </UButton>
+      <!-- Actions / Response Form -->
+      <div v-if="review.review_status !== 'responded' && review.review_status !== 'not_applicable'" class="flex flex-col gap-3">
+        <!-- Кнопки дій -->
+        <div v-if="!showResponseForm" class="rtp-actions">
+          <UButton
+            icon="i-lucide-check"
+            color="success"
+            variant="soft"
+            size="sm"
+            :loading="loading"
+            @click="openResponseForm"
+          >
+            Відповідь отримана
+          </UButton>
+          <UButton
+            icon="i-lucide-x"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            :loading="loading"
+            @click="handleMarkNotApplicable"
+          >
+            Трекінг не потрібен
+          </UButton>
+        </div>
+
+        <!-- Форма введення дати та коментаря -->
+        <div v-else class="rtp-response-form bg-neutral-50 dark:bg-neutral-850 p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 flex flex-col gap-3">
+          <span class="text-xs font-semibold text-neutral-600 dark:text-neutral-300">Реєстрація відповіді від адресата</span>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <UFormField label="Дата отримання відповіді">
+              <UInput
+                v-model="responseDate"
+                type="date"
+                size="sm"
+              />
+            </UFormField>
+            <UFormField label="Коментар / № відповіді (необов'язково)">
+              <UInput
+                v-model="responseNote"
+                placeholder="Наприклад: Лист № 123-01 від МВС"
+                size="sm"
+              />
+            </UFormField>
+          </div>
+          <div class="flex gap-2 justify-end mt-1">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              @click="closeResponseForm"
+            >
+              Скасувати
+            </UButton>
+            <UButton
+              color="success"
+              size="sm"
+              :loading="loading"
+              @click="submitResponseForm"
+            >
+              Зберегти
+            </UButton>
+          </div>
+        </div>
       </div>
 
       <!-- Responded state -->
@@ -172,11 +214,44 @@ const {
   statusIcon,
 } = useReviewTracking(() => props.docId)
 
+const showResponseForm = ref(false)
+const responseDate = ref('')
+const responseNote = ref('')
+
 onMounted(fetchReview)
 
 watch(() => props.docId, () => {
+  showResponseForm.value = false
+  responseDate.value = ''
+  responseNote.value = ''
   fetchReview()
 })
+
+function openResponseForm() {
+  // Сьогоднішня дата в локальному часовому поясі (YYYY-MM-DD)
+  const localDate = new Date()
+  const offset = localDate.getTimezoneOffset()
+  const localIso = new Date(localDate.getTime() - (offset*60*1000)).toISOString().split('T')[0]
+  responseDate.value = localIso
+  responseNote.value = review.value?.review_note || ''
+  showResponseForm.value = true
+}
+
+function closeResponseForm() {
+  showResponseForm.value = false
+}
+
+async function submitResponseForm() {
+  if (!responseDate.value) return
+  // Перетворюємо у ISO-формат для API
+  const isoDateTime = new Date(responseDate.value).toISOString()
+  await updateReview({
+    review_status: 'responded',
+    response_received_at: isoDateTime,
+    review_note: responseNote.value || null
+  })
+  showResponseForm.value = false
+}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('uk-UA', {
@@ -203,10 +278,6 @@ const fillClass = computed(() => {
 
 async function handleActivate() {
   await activateTracking(30)
-}
-
-async function handleMarkResponded() {
-  await markResponded()
 }
 
 async function handleMarkNotApplicable() {
