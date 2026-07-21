@@ -18,7 +18,6 @@ provide(DASHBOARD_KEY, store)
 onMounted(async () => {
   store.loadFavorites()
   await store.refreshAll()
-  await store.bootstrapEuSign()
   await store.fetchMyTasks()
 })
 </script>

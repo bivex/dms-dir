@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useDashboard } from '~/composables/dashboard/useDashboard'
 
 const store = useDashboard()
 const { user } = useAuth()
 const { isAdmin } = useRoles()
+
+onMounted(async () => {
+  if (!store.euReady.value) {
+    await store.bootstrapEuSign()
+  }
+})
 
 /** Активний підписант (перший pending) — окремо computed для повторного використання. */
 const pendingSigner = computed(() =>
