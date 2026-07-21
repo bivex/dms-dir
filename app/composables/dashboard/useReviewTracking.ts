@@ -1,7 +1,7 @@
 /**
  * Трекінг розгляду вихідних документів — статус відповіді адресата.
  */
-import { ref, computed } from 'vue'
+import { ref, computed, toValue, type MaybeRefOrGetter } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 
 export interface ReviewStatus {
@@ -17,18 +17,22 @@ export interface ReviewStatus {
   can_request_status: boolean
 }
 
-export function useReviewTracking(docId: string) {
+export function useReviewTracking(docIdSource: MaybeRefOrGetter<string>) {
   const { apiFetch } = useAuth()
 
   const review = ref<ReviewStatus | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
+  const activeDocId = computed(() => toValue(docIdSource))
+
   async function fetchReview() {
+    const id = activeDocId.value
+    if (!id) return
     loading.value = true
     error.value = null
     try {
-      review.value = await apiFetch(`/documents/${docId}/review`)
+      review.value = await apiFetch(`/documents/${id}/review`)
     } catch (e: any) {
       error.value = e?.data?.detail || 'Помилка завантаження'
     } finally {
@@ -37,9 +41,11 @@ export function useReviewTracking(docId: string) {
   }
 
   async function activateTracking(days = 30, note?: string) {
+    const id = activeDocId.value
+    if (!id) return
     loading.value = true
     try {
-      review.value = await apiFetch(`/documents/${docId}/review/activate`, {
+      review.value = await apiFetch(`/documents/${id}/review/activate`, {
         method: 'POST',
         body: { days, review_note: note },
       })
@@ -49,9 +55,11 @@ export function useReviewTracking(docId: string) {
   }
 
   async function updateReview(patch: Partial<ReviewStatus & { response_received_at: string | null }>) {
+    const id = activeDocId.value
+    if (!id) return
     loading.value = true
     try {
-      review.value = await apiFetch(`/documents/${docId}/review`, {
+      review.value = await apiFetch(`/documents/${id}/review`, {
         method: 'PATCH',
         body: patch,
       })

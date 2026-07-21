@@ -152,7 +152,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useReviewTracking } from '~/composables/dashboard/useReviewTracking'
 
 const props = defineProps<{ docId: string }>()
@@ -170,9 +170,13 @@ const {
   statusLabel,
   statusColor,
   statusIcon,
-} = useReviewTracking(props.docId)
+} = useReviewTracking(() => props.docId)
 
 onMounted(fetchReview)
+
+watch(() => props.docId, () => {
+  fetchReview()
+})
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('uk-UA', {
