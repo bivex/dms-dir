@@ -322,7 +322,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       reg_index: form.reg_index,
       place: form.place,
       body: form.body.split('\n').filter(Boolean),
-      addressees: form.addressees ? form.addressees.split('\n').filter(Boolean) : [],
+      addressees: form.addressees ? form.addressees.split('\n\n').filter(Boolean).map(a => a.trim()).filter(Boolean) : [],
       sender_contacts: form.sender_contacts || '',
       signers: signerLines,
       journal_id: form.journal_id ? Number(form.journal_id) : null,
@@ -432,7 +432,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       const b = cj.body
       form.body = Array.isArray(b) ? b.join('\n') : String(b ?? '')
       const addrs = cj.addressees
-      form.addressees = Array.isArray(addrs) ? addrs.join('\n') : String(addrs ?? '')
+      form.addressees = Array.isArray(addrs) ? addrs.join('\n\n') : String(addrs ?? '')
       form.sender_contacts = String(cj.sender_contacts ?? '')
     }
     const fr = full as Record<string, unknown>

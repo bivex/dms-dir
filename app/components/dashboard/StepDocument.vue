@@ -322,6 +322,15 @@ function formatBytes(bytes: number, decimals = 2) {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
 }
 
+const addresseesCount = computed(() => {
+  if (!form.addressees) return 0
+  return form.addressees.split('\n\n').filter(Boolean).map(a => a.trim()).filter(Boolean).length
+})
+
+const attachmentsCount = computed(() => {
+  return store.attachments.value?.length || 0
+})
+
 const isCollapsed = ref(false)
 </script>
 
@@ -750,12 +759,18 @@ const isCollapsed = ref(false)
       <UFormField
         v-if="!store.isOrder.value"
         label="Адресат (кому)"
-        help="Посада, ПІБ та адреса одержувача — кожна деталь з нового рядка. Виводиться у правому верхньому куті бланка."
+        help="Посада, ПІБ та адреса одержувача. Для вказання кількох адресатів розділяйте їх порожнім рядком (подвійним Enter)."
       >
         <UTextarea v-model="form.addressees" :rows="3" placeholder="Наприклад:
 Генеральному прокурору
-вул. Різницька, 13/15
-м. Київ, 01011" class="w-full" />
+м. Київ, 01011
+
+Директору ТОВ «Зоря»
+м. Львів, 79000" class="w-full" />
+        <div v-if="addresseesCount > 4" class="text-xs text-warning flex items-start gap-1.5 mt-2 bg-warning/10 p-2 rounded-md">
+          <UIcon name="i-lucide-triangle-alert" class="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <span><strong>Увага (ДСТУ 4163:2020 §5.15):</strong> На самому документі можна зазначати не більше 4 адресатів. Наразі ви вказали {{ addresseesCount }} адресатів. Складіть список розсилання, а на самому документі залиште по одному адресату.</span>
+        </div>
       </UFormField>
 
       <UFormField
@@ -1008,6 +1023,11 @@ email: example@mail.com" class="w-full" />
             </div>
           </div>
           <div v-else class="text-xs text-muted">Додатків не додано.</div>
+          
+          <div v-if="attachmentsCount > 10" class="text-xs text-warning flex items-start gap-1.5 mt-2 bg-warning/10 p-2 rounded-md">
+            <UIcon name="i-lucide-triangle-alert" class="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span><strong>Увага (ДСТУ 4163:2020 §5.21):</strong> Якщо кількість додатків перевищує 10, обов'язково слід скласти опис додатків. Наразі додано {{ attachmentsCount }} додатків.</span>
+          </div>
         </div>
       </UFormField>
 
