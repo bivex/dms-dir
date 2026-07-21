@@ -68,6 +68,7 @@ function buildContactsFromUser(u: { phone?: string | null, address?: string | nu
 export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
   const toast = useToast()
   const { user: currentUser } = useAuth()
+  const { handwritten } = useReaderPrefs()
 
   const creatingDoc = ref(false)
   const form = reactive<DocForm>({
@@ -94,7 +95,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     use_incoming_stamp: false,
     use_copy_stamp: false,
     use_control_stamp: false,
-    use_handwritten_date_index: true,
+    use_handwritten_date_index: handwritten.value,
     restriction_stamp: 'none',
     use_copy_mark: false,
     use_archived_stamp: false,
@@ -364,7 +365,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
     form.use_incoming_stamp = false
     form.use_copy_stamp = false
     form.use_control_stamp = false
-    form.use_handwritten_date_index = true
+    form.use_handwritten_date_index = handwritten.value
     form.restriction_stamp = 'none'
     form.use_copy_mark = false
     form.use_archived_stamp = false

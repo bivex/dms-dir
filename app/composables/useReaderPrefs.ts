@@ -4,6 +4,7 @@ interface ReaderPrefs {
   scale: number
   serif: boolean
   inverted: boolean
+  handwritten: boolean
 }
 
 function load(): ReaderPrefs {
@@ -14,12 +15,13 @@ function load(): ReaderPrefs {
       return {
         scale: typeof parsed.scale === 'number' ? parsed.scale : 1,
         serif: typeof parsed.serif === 'boolean' ? parsed.serif : true,
-        inverted: typeof parsed.inverted === 'boolean' ? parsed.inverted : false
+        inverted: typeof parsed.inverted === 'boolean' ? parsed.inverted : false,
+        handwritten: typeof parsed.handwritten === 'boolean' ? parsed.handwritten : true
       }
     }
   }
   catch {}
-  return { scale: 1, serif: true, inverted: false }
+  return { scale: 1, serif: true, inverted: false, handwritten: true }
 }
 
 const prefs = load()
@@ -27,10 +29,16 @@ const prefs = load()
 const scale = ref<number>(prefs.scale)
 const serif = ref<boolean>(prefs.serif)
 const inverted = ref<boolean>(prefs.inverted)
+const handwritten = ref<boolean>(prefs.handwritten)
 
 function persist() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ scale: scale.value, serif: serif.value, inverted: inverted.value }))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      scale: scale.value,
+      serif: serif.value,
+      inverted: inverted.value,
+      handwritten: handwritten.value
+    }))
   }
   catch {}
 }
@@ -55,5 +63,10 @@ export function useReaderPrefs() {
     persist()
   }
 
-  return { scale, serif, inverted, setScale, stepScale, toggleSerif, toggleInvert }
+  function toggleHandwritten() {
+    handwritten.value = !handwritten.value
+    persist()
+  }
+
+  return { scale, serif, inverted, handwritten, setScale, stepScale, toggleSerif, toggleInvert, toggleHandwritten }
 }

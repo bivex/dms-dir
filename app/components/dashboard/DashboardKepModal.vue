@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { useDashboard } from '~/composables/dashboard/useDashboard'
 import { useKep } from '~/composables/useKep'
+import { useReaderPrefs } from '~/composables/useReaderPrefs'
 import { onMounted, onBeforeUnmount, ref, computed } from 'vue'
 
 const store = useDashboard()
 const auth = useAuth()
 const kep = useKep()
+const { handwritten, toggleHandwritten } = useReaderPrefs()
 const toast = useToast()
 const loading = ref(false)
 
@@ -342,6 +344,23 @@ async function onDeleteFacsimile() {
                 Видалити факсиміле
               </UButton>
             </div>
+          </div>
+        </div>
+
+        <USeparator />
+
+        <!-- Загальні налаштування системи -->
+        <div class="space-y-3">
+          <div class="font-semibold text-sm flex items-center gap-1.5">
+            <UIcon name="i-lucide-settings" class="text-primary" />
+            <span>Загальні налаштування</span>
+          </div>
+          <div class="p-4 rounded-lg bg-neutral-50 dark:bg-neutral-800 border border-default">
+            <UCheckbox
+              v-model="handwritten"
+              label="Ввімкнути рукописну дату та індекс за замовчуванням"
+              help="Нові PDF документи будуть автоматично генеруватися з рукописними відмітками прописом"
+            />
           </div>
         </div>
 
