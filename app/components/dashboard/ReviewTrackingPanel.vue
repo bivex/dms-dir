@@ -227,6 +227,7 @@ const {
   loading,
   fetchReview,
   activateTracking,
+  updateReview,
   markResponded,
   markNotApplicable,
   statusLabel,
