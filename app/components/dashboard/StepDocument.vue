@@ -1011,7 +1011,7 @@ email: example@mail.com" class="w-full" />
                   @click="store.signAttachmentFile(att, 'asice')"
                 />
                 <UButton
-                  v-if="!store.isLocked.value"
+                  v-if="!store.isLocked.value && att.stored_filename !== 'опис_додатків.pdf'"
                   icon="i-lucide-trash-2"
                   size="xs"
                   color="error"
