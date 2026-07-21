@@ -3,6 +3,7 @@ import { useDashboard } from '~/composables/dashboard/useDashboard'
 
 const store = useDashboard()
 const { form } = store
+const toast = useToast()
 
 // Топ-25 найуживаніших видів документів (організаційно-розпорядча документація,
 // ДСТУ 4163). Користувач може обрати зі списку або вписати власний вид.
@@ -332,6 +333,16 @@ const attachmentsCount = computed(() => {
 })
 
 const isCollapsed = ref(false)
+
+async function handleGenerateStatusRequest() {
+  // Navigate to create a new document (status inquiry template)
+  // For now show a toast notification
+  toast.add({
+    title: 'Формування запиту',
+    description: 'Функція генерації запиту про хід розгляду буде доступна після збереження поточного документа.',
+    color: 'info',
+  })
+}
 </script>
 
 <template>
@@ -1030,6 +1041,14 @@ email: example@mail.com" class="w-full" />
           </div>
         </div>
       </UFormField>
+
+      <!-- Review Tracking Panel (тільки для підписаних вихідних документів) -->
+      <ReviewTrackingPanel
+        v-if="store.docStatus.value === 'signed' && form.reg_index"
+        :doc-id="form.doc_id"
+        class="mt-4"
+        @generate-status-request="handleGenerateStatusRequest"
+      />
 
       <div v-if="!store.selectedIsScanned.value && !store.isLocked.value" class="flex gap-2">
         <UButton icon="i-lucide-save" @click="store.createDoc()">
