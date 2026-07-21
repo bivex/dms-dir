@@ -1042,13 +1042,7 @@ email: example@mail.com" class="w-full" />
         </div>
       </UFormField>
 
-      <!-- Review Tracking Panel (тільки для підписаних вихідних документів) -->
-      <ReviewTrackingPanel
-        v-if="store.docStatus.value === 'signed' && form.reg_index"
-        :doc-id="form.doc_id"
-        class="mt-4"
-        @generate-status-request="handleGenerateStatusRequest"
-      />
+
 
       <div v-if="!store.selectedIsScanned.value && !store.isLocked.value" class="flex gap-2">
         <UButton icon="i-lucide-save" @click="store.createDoc()">
@@ -1056,6 +1050,15 @@ email: example@mail.com" class="w-full" />
         </UButton>
       </div>
     </fieldset>
+
+    <!-- Review Tracking Panel — поза fieldset, щоб disabled не блокував кнопки -->
+    <DashboardReviewTrackingPanel
+      v-if="store.docStatus.value === 'signed' && form.reg_index && form.doc_id"
+      :doc-id="form.doc_id"
+      class="mt-6"
+      @generate-status-request="handleGenerateStatusRequest"
+    />
+
     </div>
   </UCard>
 </template>
