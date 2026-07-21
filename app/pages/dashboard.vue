@@ -29,7 +29,7 @@ onMounted(async () => {
     <DashboardDocListPanel v-if="store.activeCategory.value !== 'counterparties' && store.activeCategory.value !== 'tasks' && store.activeCategory.value !== 'users' && store.activeCategory.value !== 'processes' && store.activeCategory.value !== 'templates'" />
 
     <!-- ГОЛОВНА ОБЛАСТЬ -->
-    <div class="flex-1 overflow-y-auto">
+    <main class="flex-1 overflow-y-auto">
       <!-- КОНТРАГЕНТИ -->
       <DashboardCounterpartiesView v-if="store.activeCategory.value === 'counterparties'" />
 
@@ -74,7 +74,7 @@ onMounted(async () => {
         <DashboardStepResolutions v-if="store.docStatus.value === 'signed'" />
         <DashboardStepDelivery v-if="!store.isOrder.value" />
       </div>
-    </div>
+    </main>
 
     <!-- модалки -->
     <DashboardDocViewerModal />

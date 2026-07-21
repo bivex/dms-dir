@@ -110,6 +110,7 @@ const isCollapsed = ref(false)
           color="primary"
           size="xs"
           class="ml-auto"
+          aria-label="Згорнути або розгорнути"
         />
       </div>
     </template>

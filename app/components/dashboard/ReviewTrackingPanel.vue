@@ -164,6 +164,7 @@
             variant="ghost"
             size="xs"
             title="Змінити дату або коментар"
+            aria-label="Змінити дату або коментар"
             @click="openResponseForm"
           />
         </div>

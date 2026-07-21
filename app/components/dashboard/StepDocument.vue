@@ -373,6 +373,7 @@ async function handleGenerateStatusRequest() {
           color="neutral"
           size="xs"
           class="ml-2 flex-shrink-0"
+          aria-label="Згорнути або розгорнути"
         />
       </div>
     </template>

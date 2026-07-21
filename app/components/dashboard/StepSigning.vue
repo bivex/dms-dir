@@ -64,6 +64,7 @@ async function downloadSignerManifest(signerIndex: number) {
           color="neutral"
           size="xs"
           class="ml-auto"
+          aria-label="Згорнути або розгорнути"
         />
       </div>
     </template>

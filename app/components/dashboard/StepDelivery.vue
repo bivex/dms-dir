@@ -43,6 +43,7 @@ watch(() => store.form.doc_id, (newId) => {
           color="neutral"
           size="xs"
           class="ml-auto"
+          aria-label="Згорнути або розгорнути"
         />
       </div>
     </template>
