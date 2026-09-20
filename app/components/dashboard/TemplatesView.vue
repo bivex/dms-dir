@@ -2,6 +2,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { TEMPLATE_CATEGORIES, type DocTemplate } from '~/composables/dashboard/useTemplates'
 import { useDashboard } from '~/composables/dashboard/useDashboard'
+import TemplateCard from './templates/TemplateCard.vue'
+import TemplatePreviewDrawer from './templates/TemplatePreviewDrawer.vue'
+import TemplateEditModal from './templates/TemplateEditModal.vue'
 
 const store = useDashboard()
 
@@ -65,86 +68,63 @@ const filtered = computed(() => {
   return list
 })
 
-// підрахунок шаблонів по категорії
-function catCount(catId: string): number {
+function countByCategory(catId: string) {
   if (catId === 'all') return store.docTemplates.value.length
   return store.docTemplates.value.filter(t => t.category === catId).length
 }
 
-// ── колірна схема категорій ───────────────────────────────────────────
-const CAT_COLOR: Record<string, string> = {
-  rozporyadchi: 'primary',
-  dovidkovi:    'info',
-  lystuvannya:  'success',
-  zvernennya:   'warning',
-  dohovirni:    'secondary',
-  normatyvni:   'neutral',
-  stylevi:      'amber',
-}
-
-function catColor(catId: string) { return CAT_COLOR[catId] ?? 'neutral' }
-
-function categoryLabel(catId: string) {
-  return TEMPLATE_CATEGORIES.find(c => c.id === catId)?.label ?? catId
-}
-function categoryIcon(catId: string) {
-  return TEMPLATE_CATEGORIES.find(c => c.id === catId)?.icon ?? 'i-lucide-file'
-}
-
-// ── застосувати шаблон → відкрити нову картку документа ──────────────
 function applyTemplate(tpl: DocTemplate) {
-  store.newDocument()
   store.form.doc_type        = tpl.doc_type
   store.form.subject_type    = tpl.subject_type
   store.form.title           = tpl.title_tpl || tpl.title
   store.form.body            = tpl.body
-  store.form.addressees      = tpl.addressees      ?? ''
-  store.form.sender_contacts = tpl.sender_contacts ?? ''
-  if (tpl.subject_type === 'person') {
-    const user = useAuth().user?.value
-    if (user?.name) store.form.org_name = `Гр. ${user.name}`
+  if (tpl.addressees) {
+    store.form.addressees    = tpl.addressees
+  }
+  if (tpl.sender_contacts) {
+    store.form.sender_contacts = tpl.sender_contacts
   }
   store.activeCategory.value = 'all'
-  previewTpl.value = null
+  store.selectedId.value     = null
+  store.creatingDoc.value    = true
 }
 
-onMounted(() => store.reloadTemplates())
+onMounted(() => {
+  store.reloadTemplates()
+})
 </script>
 
 <template>
-  <div class="flex h-full overflow-hidden">
+  <div class="flex h-full overflow-hidden bg-background">
 
-    <!-- ── Ліва панель: категорії ──────────────────────────────────── -->
-    <aside class="w-56 flex-shrink-0 border-r border-default flex flex-col bg-default/30">
-      <div class="p-4 border-b border-default">
-        <div class="flex items-center gap-2">
-          <UIcon name="i-lucide-layout-template" class="text-primary text-lg" />
-          <span class="font-semibold text-sm">Шаблони документів</span>
-        </div>
-        <div class="text-xs text-muted mt-0.5">
-          {{ store.docTemplates.value.length }} шаблонів у БД
-        </div>
+    <!-- ── Ліва колонка: категорії ─────────────────────────────────── -->
+    <aside class="w-56 border-r border-default flex flex-col bg-neutral-50 dark:bg-neutral-900/50 flex-shrink-0">
+      <div class="p-3 border-b border-default">
+        <div class="text-xs font-semibold text-muted uppercase tracking-wider px-2">Категорії</div>
       </div>
 
-      <nav class="flex-1 overflow-y-auto p-2 space-y-px">
-        <UButton
+      <nav class="flex-1 overflow-y-auto p-2 space-y-0.5">
+        <button
           v-for="cat in TEMPLATE_CATEGORIES"
           :key="cat.id"
-          block
-          variant="ghost"
-          :color="activeCat === cat.id ? 'primary' : 'neutral'"
-          :icon="cat.icon"
-          class="justify-start"
-          @click="activeCat = cat.id; store.reloadTemplates(cat.id)"
+          class="w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors text-left"
+          :class="activeCat === cat.id
+            ? 'bg-primary/10 text-primary font-semibold'
+            : 'text-muted hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-default'"
+          @click="activeCat = cat.id; previewTpl = null"
         >
-          <span class="flex-1 text-left truncate">{{ cat.label }}</span>
+          <div class="flex items-center gap-2 min-w-0">
+            <UIcon :name="cat.icon" class="text-sm flex-shrink-0" />
+            <span class="truncate">{{ cat.label }}</span>
+          </div>
           <UBadge
-            :label="String(catCount(cat.id))"
+            :label="String(countByCategory(cat.id))"
             variant="subtle"
             size="xs"
-            class="ml-auto flex-shrink-0"
+            color="neutral"
+            class="ml-1 flex-shrink-0 font-mono text-[10px]"
           />
-        </UButton>
+        </button>
       </nav>
 
       <!-- Кнопка «Додати шаблон» -->
@@ -208,254 +188,43 @@ onMounted(() => store.reloadTemplates())
             class="grid gap-3"
             style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr))"
           >
-            <div
+            <TemplateCard
               v-for="tpl in filtered"
               :key="tpl.id"
-              class="group border border-default rounded-lg p-4 bg-background hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer flex flex-col gap-2"
-              :class="{ 'border-primary ring-1 ring-primary/20 bg-primary/5': previewTpl?.id === tpl.id }"
-              @click="previewTpl = tpl"
-            >
-              <!-- Іконка + бейдж -->
-              <div class="flex items-start gap-3">
-                <div
-                  class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                  :class="`bg-${catColor(tpl.category)}/10`"
-                >
-                  <UIcon :name="tpl.icon" :class="`text-${catColor(tpl.category)} text-lg`" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="font-medium text-sm leading-snug">{{ tpl.title }}</div>
-                  <div class="flex items-center gap-1 mt-1 flex-wrap">
-                    <UBadge
-                      :label="categoryLabel(tpl.category)"
-                      :color="catColor(tpl.category) as any"
-                      variant="subtle"
-                      size="xs"
-                    />
-                    <UBadge
-                      v-if="tpl.is_builtin"
-                      label="вбуд."
-                      color="neutral"
-                      variant="subtle"
-                      size="xs"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <!-- Опис -->
-              <div class="text-xs text-muted leading-snug line-clamp-2">
-                {{ tpl.description || '—' }}
-              </div>
-
-              <!-- Вид -->
-              <div class="text-[11px] text-muted/70 font-mono truncate">
-                {{ tpl.doc_type }}
-              </div>
-
-              <!-- Дії (hover) -->
-              <div class="flex gap-1.5 mt-auto pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <UButton size="xs" variant="soft" icon="i-lucide-eye" class="flex-1 justify-center" @click.stop="previewTpl = tpl">
-                  Переглянути
-                </UButton>
-                <UButton size="xs" icon="i-lucide-file-plus" class="flex-1 justify-center" @click.stop="applyTemplate(tpl)">
-                  Створити
-                </UButton>
-              </div>
-            </div>
+              :tpl="tpl"
+              :is-selected="previewTpl?.id === tpl.id"
+              @select="previewTpl = $event"
+              @preview="previewTpl = $event"
+              @apply="applyTemplate($event)"
+              @edit="openEdit($event)"
+              @delete="store.deleteTemplate($event); if (previewTpl?.id === $event.id) previewTpl = null"
+            />
           </div>
         </div>
 
-        <!-- ── Панель попереднього перегляду ─────────────────────── -->
-        <transition
-          enter-active-class="transition-all duration-200"
-          enter-from-class="opacity-0 translate-x-4"
-          leave-active-class="transition-all duration-150"
-          leave-to-class="opacity-0 translate-x-4"
-        >
-          <aside
+        <!-- Панель швидкого перегляду -->
+        <transition name="drawer">
+          <TemplatePreviewDrawer
             v-if="previewTpl"
-            class="w-80 flex-shrink-0 border-l border-default flex flex-col overflow-hidden"
-          >
-            <!-- Шапка -->
-            <div class="p-4 border-b border-default flex items-start gap-2">
-              <div
-                class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                :class="`bg-${catColor(previewTpl.category)}/10`"
-              >
-                <UIcon :name="previewTpl.icon" :class="`text-${catColor(previewTpl.category)} text-lg`" />
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="font-semibold text-sm leading-snug">{{ previewTpl.title }}</div>
-                <div class="text-xs text-muted mt-0.5 line-clamp-2">{{ previewTpl.description }}</div>
-              </div>
-              <UButton icon="i-lucide-x" variant="ghost" color="neutral" size="xs" class="flex-shrink-0" @click="previewTpl = null" />
-            </div>
-
-            <!-- Мета -->
-            <div class="overflow-y-auto flex-1 p-4 space-y-3 text-sm">
-              <div>
-                <div class="text-xs text-muted font-medium uppercase mb-1">Вид документа</div>
-                <div class="font-mono text-xs bg-elevated px-2 py-1 rounded">{{ previewTpl.doc_type }}</div>
-              </div>
-
-              <div>
-                <div class="text-xs text-muted font-medium uppercase mb-1">Суб'єкт</div>
-                <UBadge
-                  :label="previewTpl.subject_type === 'legal' ? 'Юридична особа' : previewTpl.subject_type === 'fop' ? 'ФОП' : 'Фізична особа'"
-                  :color="previewTpl.subject_type === 'legal' ? 'primary' : previewTpl.subject_type === 'fop' ? 'warning' : 'info'"
-                  variant="subtle"
-                  size="xs"
-                />
-              </div>
-
-              <div>
-                <div class="text-xs text-muted font-medium uppercase mb-1">Типовий заголовок</div>
-                <div class="text-xs bg-elevated px-2 py-1.5 rounded italic text-muted">{{ previewTpl.title_tpl || '—' }}</div>
-              </div>
-
-              <div v-if="previewTpl.addressees">
-                <div class="text-xs text-muted font-medium uppercase mb-1">Адресат</div>
-                <div class="text-xs bg-elevated px-2 py-1.5 rounded whitespace-pre-line text-muted">{{ previewTpl.addressees }}</div>
-              </div>
-
-              <div>
-                <div class="text-xs text-muted font-medium uppercase mb-1">Текст документа</div>
-                <div class="text-xs bg-elevated px-2 py-2 rounded whitespace-pre-line leading-relaxed max-h-56 overflow-y-auto">{{ previewTpl.body }}</div>
-              </div>
-
-              <div>
-                <div class="text-xs text-muted font-medium uppercase mb-1">Категорія</div>
-                <div class="flex items-center gap-1.5 text-xs text-muted">
-                  <UIcon :name="categoryIcon(previewTpl.category)" class="text-sm" />
-                  {{ categoryLabel(previewTpl.category) }}
-                </div>
-              </div>
-
-              <div v-if="previewTpl.is_builtin" class="text-xs text-muted/60 flex items-center gap-1">
-                <UIcon name="i-lucide-lock" class="text-xs" />
-                Вбудований шаблон — дублюйте, щоб змінити
-              </div>
-            </div>
-
-            <!-- Дії -->
-            <div class="p-3 border-t border-default space-y-1.5">
-              <UButton block icon="i-lucide-file-plus" @click="applyTemplate(previewTpl)">
-                Створити документ
-              </UButton>
-              <div class="flex gap-1.5">
-                <UButton
-                  icon="i-lucide-copy"
-                  variant="soft"
-                  color="neutral"
-                  size="xs"
-                  class="flex-1 justify-center"
-                  @click="store.duplicateTemplate(previewTpl)"
-                >
-                  Дублювати
-                </UButton>
-                <UButton
-                  v-if="!previewTpl.is_builtin"
-                  icon="i-lucide-pen"
-                  variant="soft"
-                  size="xs"
-                  class="flex-1 justify-center"
-                  @click="openEdit(previewTpl)"
-                >
-                  Редагувати
-                </UButton>
-                <UButton
-                  v-if="!previewTpl.is_builtin"
-                  icon="i-lucide-trash-2"
-                  variant="soft"
-                  color="error"
-                  size="xs"
-                  @click="store.deleteTemplate(previewTpl); previewTpl = null"
-                />
-              </div>
-            </div>
-          </aside>
+            :tpl="previewTpl"
+            @close="previewTpl = null"
+            @apply="applyTemplate($event)"
+            @duplicate="store.duplicateTemplate($event)"
+            @edit="openEdit($event)"
+            @delete="store.deleteTemplate($event); previewTpl = null"
+          />
         </transition>
       </div>
     </div>
 
-    <!-- ── Модальне вікно створення/редагування ───────────────────── -->
-    <UModal v-model:open="editOpen" :title="editIsNew ? 'Новий шаблон' : 'Редагувати шаблон'" :ui="{ content: 'max-w-2xl' }">
-      <template #body>
-        <div class="space-y-4 p-1">
-          <div class="grid grid-cols-2 gap-3">
-            <UFormField label="Категорія" class="col-span-1">
-              <USelect
-                v-model="editForm.category"
-                :options="TEMPLATE_CATEGORIES.filter(c => c.id !== 'all').map(c => ({ label: c.label, value: c.id }))"
-                class="w-full"
-                size="sm"
-              />
-            </UFormField>
-            <UFormField label="Суб'єкт" class="col-span-1">
-              <USelect
-                v-model="editForm.subject_type"
-                :options="[
-                  { label: 'Юридична особа', value: 'legal' },
-                  { label: 'ФОП', value: 'fop' },
-                  { label: 'Фізична особа', value: 'person' },
-                ]"
-                class="w-full"
-                size="sm"
-              />
-            </UFormField>
-          </div>
-
-          <UFormField label="Вид документа" required>
-            <UInput v-model="editForm.doc_type" placeholder="Наказ, Лист, Заява…" size="sm" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Назва шаблону" required>
-            <UInput v-model="editForm.title" placeholder="Назва шаблону для картки" size="sm" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Короткий опис">
-            <UInput v-model="editForm.description" placeholder="Для чого цей шаблон" size="sm" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Типовий заголовок документа">
-            <UInput v-model="editForm.title_tpl" placeholder="Про надання відпустки" size="sm" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Текст документа" required>
-            <UTextarea
-              v-model="editForm.body"
-              placeholder="Текст з плейсхолдерами [ПІБ], [Дата]…"
-              :rows="8"
-              class="w-full font-mono text-xs"
-              size="sm"
-            />
-          </UFormField>
-
-          <UFormField label="Адресат (необов'язково)">
-            <UTextarea v-model="editForm.addressees" :rows="3" size="sm" class="w-full" placeholder="Директору…" />
-          </UFormField>
-
-          <UFormField label="Контакти відправника (необов'язково)">
-            <UTextarea v-model="editForm.sender_contacts" :rows="3" size="sm" class="w-full" placeholder="Вулиця, місто, тел…" />
-          </UFormField>
-        </div>
-      </template>
-
-      <template #footer>
-        <div class="flex justify-end gap-2 px-1">
-          <UButton color="neutral" variant="ghost" @click="editOpen = false">Скасувати</UButton>
-          <UButton
-            icon="i-lucide-save"
-            :loading="store.savingTemplate.value"
-            :disabled="!editForm.title || !editForm.doc_type"
-            @click="submitEdit()"
-          >
-            {{ editIsNew ? 'Створити' : 'Зберегти' }}
-          </UButton>
-        </div>
-      </template>
-    </UModal>
+    <!-- Модальне вікно створення/редагування -->
+    <TemplateEditModal
+      v-model:open="editOpen"
+      :edit-is-new="editIsNew"
+      :edit-form="editForm"
+      :loading="store.savingTemplate.value"
+      @submit="submitEdit()"
+    />
 
   </div>
 </template>

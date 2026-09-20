@@ -220,6 +220,7 @@ export function createDashboardStore() {
     // documents
     docs,
     selectedId: documents.selectedId,
+    selectedDoc: documents.selectedDoc,
     activeCategory,
     searchQuery,
     selectMode: documents.selectMode,
