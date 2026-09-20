@@ -80,18 +80,43 @@ export function useDelivery(deps: {
 
   const bulkItems = ref<DeliveryItem[]>([])
 
+  // Multi-recipient state
+  const recipients = ref<Array<{
+    name: string
+    address: string
+    phone: string
+    code: string
+    subject_type: string
+    raw_text?: string
+  }>>([])
+  const activeRecipientIndex = ref(0)
+
   async function fetchDeliveryDetails(docId: string) {
     loading.value = true
     try {
       const res = await apiFetch<{
         sender: typeof sender
         recipient: typeof recipient
+        recipients?: Array<{
+          name: string
+          address: string
+          phone: string
+          code: string
+          subject_type: string
+          raw_text?: string
+        }>
         items: DeliveryItem[]
       }>(`/documents/${docId}/delivery`)
 
       if (res) {
         Object.assign(sender, res.sender)
-        Object.assign(recipient, res.recipient)
+        recipients.value = res.recipients && res.recipients.length > 0 ? res.recipients : [res.recipient]
+        activeRecipientIndex.value = 0
+        if (recipients.value.length > 0) {
+          Object.assign(recipient, recipients.value[0])
+        } else {
+          Object.assign(recipient, res.recipient)
+        }
         items.value = res.items || []
       }
     }
@@ -100,6 +125,16 @@ export function useDelivery(deps: {
     }
     finally {
       loading.value = false
+    }
+  }
+
+  function selectRecipient(index: number) {
+    if (index >= 0 && index < recipients.value.length) {
+      if (recipients.value[activeRecipientIndex.value]) {
+        Object.assign(recipients.value[activeRecipientIndex.value], recipient)
+      }
+      activeRecipientIndex.value = index
+      Object.assign(recipient, recipients.value[index])
     }
   }
 
@@ -115,10 +150,14 @@ export function useDelivery(deps: {
     items.value.splice(index, 1)
   }
 
-  async function triggerDeliveryExport(docId: string) {
+  async function triggerDeliveryExport(docId: string, all: boolean = false) {
     if (items.value.some(item => !item.name.trim())) {
       toast.add({ title: 'Заповніть найменування всіх предметів', color: 'warning' })
       return
+    }
+
+    if (recipients.value[activeRecipientIndex.value]) {
+      Object.assign(recipients.value[activeRecipientIndex.value], recipient)
     }
 
     exporting.value = true
@@ -133,6 +172,8 @@ export function useDelivery(deps: {
         body: JSON.stringify({
           sender,
           recipient,
+          recipients: recipients.value,
+          export_all_recipients: all,
           items: items.value,
           generate_f107: generateF107.value,
           generate_label: generateLabel.value
@@ -145,12 +186,19 @@ export function useDelivery(deps: {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `ukrposhta_delivery_${docId}.pdf`
+      a.download = all
+        ? `ukrposhta_all_recipients_${docId}.pdf`
+        : `ukrposhta_delivery_${docId}.pdf`
       document.body.appendChild(a)
       a.click()
       a.remove()
       window.URL.revokeObjectURL(url)
-      toast.add({ title: 'Документи для відправки Укрпоштою сформовано', color: 'success' })
+      toast.add({
+        title: all
+          ? `Сформовано комплекти для всіх адресатів (${recipients.value.length} шт.)`
+          : 'Документи для відправки Укрпоштою сформовано',
+        color: 'success'
+      })
     }
     catch (e: unknown) {
       toast.add({ title: 'Помилка експорту PDF', description: String(e), color: 'error' })
@@ -279,6 +327,9 @@ export function useDelivery(deps: {
     deliveryExporting: exporting,
     deliverySender: sender,
     deliveryRecipient: recipient,
+    deliveryRecipients: recipients,
+    deliveryActiveRecipientIndex: activeRecipientIndex,
+    selectDeliveryRecipient: selectRecipient,
     deliveryItems: items,
     generateF107,
     generateLabel,

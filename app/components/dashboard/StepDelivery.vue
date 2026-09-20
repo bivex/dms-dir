@@ -65,6 +65,30 @@ watch(() => store.form.doc_id, (newId) => {
         </div>
       </div>
 
+      <!-- Мультиадресати (якщо в документі зазначено більше 1 адресата) -->
+      <div v-if="store.deliveryRecipients.value.length > 1" class="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
+        <div class="flex items-center justify-between text-xs font-semibold text-primary">
+          <div class="flex items-center gap-1.5">
+            <UIcon name="i-lucide-users" />
+            <span>Мультиадресати документа ({{ store.deliveryRecipients.value.length }} адресати):</span>
+          </div>
+          <span class="text-[11px] text-muted font-normal">Оберіть адресата для налаштування або роздрукуйте бланки для всіх</span>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <UButton
+            v-for="(rec, rIdx) in store.deliveryRecipients.value"
+            :key="rIdx"
+            size="xs"
+            :variant="store.deliveryActiveRecipientIndex.value === rIdx ? 'solid' : 'outline'"
+            :color="store.deliveryActiveRecipientIndex.value === rIdx ? 'primary' : 'neutral'"
+            icon="i-lucide-user"
+            @click="store.selectDeliveryRecipient(rIdx)"
+          >
+            Адресат {{ rIdx + 1 }}: {{ rec.name ? (rec.name.length > 25 ? rec.name.slice(0, 22) + '...' : rec.name) : `№${rIdx + 1}` }}
+          </UButton>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Блок Відправника -->
         <div class="p-4 rounded-lg bg-elevated/20 border border-default space-y-3">
@@ -94,6 +118,9 @@ watch(() => store.form.doc_id, (newId) => {
             <span class="flex items-center gap-1.5">
               <UIcon name="i-lucide-user" />
               Отримувач
+              <span v-if="store.deliveryRecipients.value.length > 1" class="text-[10px] text-primary font-mono ml-1">
+                (Адресат {{ store.deliveryActiveRecipientIndex.value + 1 }} з {{ store.deliveryRecipients.value.length }})
+              </span>
             </span>
             <USelect
               placeholder="Обрати з контрагентів..."
@@ -158,25 +185,26 @@ watch(() => store.form.doc_id, (newId) => {
               <div class="col-span-2 text-right">
                 <UInput v-model.number="item.declared_value" type="number" min="0" step="0.1" class="w-full text-right" size="sm" />
               </div>
-              <div class="col-span-1 text-center">
+              <div class="col-span-1 flex justify-center">
                 <UButton
                   icon="i-lucide-trash-2"
                   variant="ghost"
                   color="error"
                   size="xs"
+                  aria-label="Видалити"
                   @click="store.removeDeliveryItem(idx)"
                 />
               </div>
             </div>
-            <div v-if="store.deliveryItems.value.length === 0" class="p-4 text-center text-xs text-muted italic">
-              Список порожній. Буде сформовано пустий опис або адресний ярлик.
+            <div v-if="store.deliveryItems.value.length === 0" class="p-4 text-center text-muted text-xs">
+              Список предметів порожній. Додайте хоча б один предмет або перевірте наявність документа.
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Параметри та кнопки дій -->
-      <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-default">
+      <!-- Чекбокси та кнопка експорту -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-2 border-t border-default">
         <div class="flex items-center gap-4">
           <UCheckbox
             v-model="store.generateF107.value"
@@ -188,7 +216,7 @@ watch(() => store.form.doc_id, (newId) => {
           />
         </div>
 
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           <UButton
             variant="outline"
             icon="i-lucide-archive"
@@ -198,13 +226,29 @@ watch(() => store.form.doc_id, (newId) => {
             Завантажити ASiC-E
           </UButton>
           <UButton
+            v-if="store.deliveryRecipients.value.length > 1"
+            variant="outline"
             icon="i-lucide-printer"
             :loading="store.deliveryExporting.value"
             :disabled="store.docStatus.value !== 'signed'"
-            title="Формування бланків доступне лише після підписання КЕП"
-            @click="store.triggerDeliveryExport(store.form.doc_id)"
+            title="Формування бланків для поточного адресата"
+            @click="store.triggerDeliveryExport(store.form.doc_id, false)"
           >
-            Сформувати бланки Укрпошти
+            Для адресата №{{ store.deliveryActiveRecipientIndex.value + 1 }}
+          </UButton>
+          <UButton
+            icon="i-lucide-printer"
+            :loading="store.deliveryExporting.value"
+            :disabled="store.docStatus.value !== 'signed'"
+            :title="store.docStatus.value !== 'signed' ? 'Формування бланків доступне лише після підписання КЕП' : ''"
+            @click="store.triggerDeliveryExport(store.form.doc_id, store.deliveryRecipients.value.length > 1)"
+          >
+            <span v-if="store.deliveryRecipients.value.length > 1">
+              Друк для ВСІХ адресатів ({{ store.deliveryRecipients.value.length }} компл.)
+            </span>
+            <span v-else>
+              Сформувати бланки Укрпошти
+            </span>
           </UButton>
         </div>
       </div>
