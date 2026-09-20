@@ -130,7 +130,6 @@ function formatDocDate(isoStr?: string | null): string {
         v-for="f in quickFilters"
         :key="f.id"
         type="button"
-        :aria-label="`Фільтр: ${f.label}`"
         class="px-2 py-0.5 rounded text-[11px] font-semibold transition-all duration-100 flex items-center gap-1 border"
         :class="store.statusFilter.value === f.id
           ? 'bg-primary/15 text-primary-800 dark:text-primary-300 border-primary/40 font-bold'

@@ -28,5 +28,6 @@ const selected = computed({
     icon="i-lucide-palette"
     size="sm"
     class="w-full"
+    aria-label="Вибір теми оформлення"
   />
 </template>
