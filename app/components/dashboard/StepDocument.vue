@@ -39,6 +39,7 @@ const docTypeOptions = [
 
 const isFocused = ref(false)
 const withVisa = ref(false)
+const isOrder = computed(() => !!store.isOrder?.value)
 
 const filteredJournals = computed(() => {
   if (!store.journals.value) return []
@@ -840,7 +841,7 @@ async function handleGenerateStatusRequest() {
       </UFormField>
 
       <UFormField
-        v-if="!store.isOrder.value"
+        v-if="!isOrder"
       >
         <template #label>
           <div class="flex items-center justify-between w-full">
