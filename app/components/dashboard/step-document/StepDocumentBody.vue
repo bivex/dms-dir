@@ -60,7 +60,9 @@ function moveAddresseeCard(index: number, direction: 'up' | 'down') {
   const target = direction === 'up' ? index - 1 : index + 1
   if (target < 0 || target >= addresseeCards.value.length) return
   const item = addresseeCards.value.splice(index, 1)[0]
-  addresseeCards.value.splice(target, 0, item)
+  if (item !== undefined) {
+    addresseeCards.value.splice(target, 0, item)
+  }
   syncCardsToForm()
 }
 

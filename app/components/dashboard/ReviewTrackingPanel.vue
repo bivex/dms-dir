@@ -14,10 +14,11 @@ const emit = defineEmits<{
 
 const store = useDashboard()
 
+const generatingRequest = ref(false)
+
 const {
   review,
   loading,
-  generatingRequest,
   fetchReview,
   activateTracking,
   markResponded,

@@ -16,17 +16,69 @@ const readerStyle = computed(() => ({
 const invertFilter = computed(() =>
   inverted.value ? { filter: 'invert(1) hue-rotate(180deg)' } : {}
 )
+
+const isMergedActive = computed(() => store.viewerTitle.value.includes('(з додатками)'))
+const isAttachmentActive = computed(() => {
+  return store.attachments.value?.some(a => a.original_filename === store.viewerTitle.value)
+})
+
+const attachmentDropdownItems = computed(() => {
+  if (!store.attachments.value?.length) return []
+  return [
+    store.attachments.value.map(att => ({
+      label: att.original_filename,
+      icon: 'i-lucide-paperclip',
+      onSelect: () => store.openAttachmentViewer(store.form.doc_id, att)
+    }))
+  ]
+})
 </script>
 
 <template>
   <UModal v-model:open="store.viewerOpen.value" :ui="{ content: 'max-w-5xl w-full' }">
     <template #content>
       <div class="flex flex-col h-[85vh]">
-        <div class="flex items-center justify-between p-3 border-b border-default">
+        <div class="flex items-center justify-between p-3 border-b border-default gap-2 flex-wrap">
           <div class="flex items-center gap-2 font-medium text-sm min-w-0">
             <UIcon name="i-lucide-file-text" class="text-primary flex-shrink-0" />
             <span class="truncate">{{ store.viewerTitle.value }}</span>
             <UBadge :label="store.viewerMode.value.toUpperCase()" size="xs" variant="subtle" class="flex-shrink-0" />
+          </div>
+
+          <!-- Перемикання: Документ / З додатками / Додатки -->
+          <div v-if="store.attachments.value?.length > 0" class="flex items-center gap-1">
+            <UButton
+              size="xs"
+              :variant="!isMergedActive && !isAttachmentActive ? 'subtle' : 'ghost'"
+              :color="!isMergedActive && !isAttachmentActive ? 'primary' : 'neutral'"
+              title="Основний документ"
+              aria-label="Основний документ"
+              @click="store.openViewer({ doc_id: store.form.doc_id, title: store.form.title, fmt: store.form.fmt })"
+            >
+              Документ
+            </UButton>
+            <UButton
+              size="xs"
+              :variant="isMergedActive ? 'subtle' : 'ghost'"
+              :color="isMergedActive ? 'primary' : 'neutral'"
+              title="Обʼєднаний PDF (документ + додатки з маркуванням)"
+              aria-label="Переглянути з додатками"
+              @click="store.openViewer({ doc_id: store.form.doc_id, title: store.form.title, fmt: store.form.fmt, merged: true })"
+            >
+              З додатками ({{ store.attachments.value.length }})
+            </UButton>
+            <UDropdownMenu :items="attachmentDropdownItems">
+              <UButton
+                size="xs"
+                :variant="isAttachmentActive ? 'subtle' : 'ghost'"
+                :color="isAttachmentActive ? 'primary' : 'neutral'"
+                icon="i-lucide-paperclip"
+                title="Окремі додатки"
+                aria-label="Окремі додатки"
+              >
+                Файли
+              </UButton>
+            </UDropdownMenu>
           </div>
           <div class="flex items-center gap-1 flex-shrink-0">
             <!-- Елементи керування типографікою читання -->

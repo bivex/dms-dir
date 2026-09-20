@@ -52,7 +52,53 @@ const { form } = store
     </div>
 
     <!-- Тулбар дій над документом -->
-    <div v-show="!props.isCollapsed" class="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
+    <div v-show="!props.isCollapsed" class="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap border-b border-default mb-1">
+      <UButton
+        icon="i-lucide-eye"
+        variant="ghost"
+        color="neutral"
+        size="xs"
+        title="Переглянути документ"
+        aria-label="Переглянути документ"
+        @click="store.openViewer()"
+      >
+        Переглянути
+      </UButton>
+      <UButton
+        v-if="store.attachments.value.length > 0"
+        icon="i-lucide-eye"
+        variant="ghost"
+        color="neutral"
+        size="xs"
+        title="Переглянути обʼєднаний PDF (документ + додатки з маркуванням)"
+        aria-label="Переглянути з додатками"
+        @click="store.openViewer({ merged: true, visa: props.withVisa })"
+      >
+        Переглянути з додатками
+      </UButton>
+      <UButton
+        icon="i-lucide-download"
+        variant="ghost"
+        color="neutral"
+        size="xs"
+        title="Завантажити документ"
+        aria-label="Завантажити документ"
+        @click="store.downloadDoc()"
+      >
+        Завантажити
+      </UButton>
+      <UButton
+        v-if="store.attachments.value.length > 0"
+        icon="i-lucide-file-stack"
+        variant="ghost"
+        color="neutral"
+        size="xs"
+        title="Завантажити обʼєднаний PDF (документ + додатки з маркуванням)"
+        aria-label="Завантажити з додатками"
+        @click="store.downloadMergedPdf(props.withVisa)"
+      >
+        Завантажити з додатками
+      </UButton>
       <UButton
         v-if="form.fmt === 'pdf'"
         icon="i-lucide-stamp"
@@ -60,6 +106,7 @@ const { form } = store
         :color="props.withVisa ? 'primary' : 'neutral'"
         size="xs"
         :title="props.withVisa ? 'Вимкнути штамп-візу' : 'Увімкнути штамп-візу у PDF'"
+        aria-label="Штамп-віза"
         @click="emit('update:withVisa', !props.withVisa)"
       >
         {{ props.withVisa ? 'Із візою' : 'Без візи' }}

@@ -130,11 +130,15 @@ export function useDelivery(deps: {
 
   function selectRecipient(index: number) {
     if (index >= 0 && index < recipients.value.length) {
-      if (recipients.value[activeRecipientIndex.value]) {
-        Object.assign(recipients.value[activeRecipientIndex.value], recipient)
+      const current = recipients.value[activeRecipientIndex.value]
+      if (current) {
+        Object.assign(current, recipient)
       }
       activeRecipientIndex.value = index
-      Object.assign(recipient, recipients.value[index])
+      const target = recipients.value[index]
+      if (target) {
+        Object.assign(recipient, target)
+      }
     }
   }
 
@@ -156,8 +160,9 @@ export function useDelivery(deps: {
       return
     }
 
-    if (recipients.value[activeRecipientIndex.value]) {
-      Object.assign(recipients.value[activeRecipientIndex.value], recipient)
+    const current = recipients.value[activeRecipientIndex.value]
+    if (current) {
+      Object.assign(current, recipient)
     }
 
     exporting.value = true

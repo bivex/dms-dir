@@ -132,7 +132,7 @@ async function onLinkCert() {
               accept=".dat,.pfx,.pk8,.zs2,.jks"
               class="w-full"
               size="sm"
-              @change="kep.onKeyFile"
+              @change="(e: Event) => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) kep.onKeyFile(f) }"
             />
           </div>
         </UFormField>
