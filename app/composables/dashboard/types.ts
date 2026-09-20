@@ -17,6 +17,8 @@ export interface DocEntry {
   folder_id?: number | null
   review_status?: string | null
   expected_response_date?: string | null
+  response_received_at?: string | null
+  review_note?: string | null
 }
 
 export interface FolderEntry {

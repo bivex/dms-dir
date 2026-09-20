@@ -538,6 +538,56 @@ async function handleGenerateStatusRequest() {
       </div>
     </div>
 
+    <!-- Банер контролю та дедлайну -->
+    <div
+      v-if="store.selectedDoc.value && store.getControlBadge(store.selectedDoc.value)"
+      class="flex items-center justify-between gap-3 p-3 rounded-lg border text-sm"
+      :class="{
+        'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900 text-red-900 dark:text-red-200': store.getControlBadge(store.selectedDoc.value)?.status === 'overdue',
+        'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-200': store.getControlBadge(store.selectedDoc.value)?.status === 'today' || store.getControlBadge(store.selectedDoc.value)?.status === 'urgent',
+        'bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-900 text-sky-900 dark:text-sky-200': store.getControlBadge(store.selectedDoc.value)?.status === 'pending',
+        'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900 text-emerald-900 dark:text-emerald-200': store.getControlBadge(store.selectedDoc.value)?.status === 'closed'
+      }"
+    >
+      <div class="flex items-center gap-2.5">
+        <UIcon :name="store.getControlBadge(store.selectedDoc.value)?.icon || 'i-lucide-clock'" class="text-xl flex-shrink-0" />
+        <div>
+          <div class="font-bold flex items-center gap-2">
+            <span>{{ store.getControlBadge(store.selectedDoc.value)?.label }}</span>
+            <span v-if="store.selectedDoc.value.expected_response_date" class="text-xs font-normal opacity-80">
+              (термін до {{ new Date(store.selectedDoc.value.expected_response_date).toLocaleDateString('uk-UA') }})
+            </span>
+          </div>
+          <div v-if="store.selectedDoc.value.review_note" class="text-xs opacity-90 mt-0.5">
+            {{ store.selectedDoc.value.review_note }}
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <UButton
+          v-if="store.getControlBadge(store.selectedDoc.value)?.isControlled"
+          icon="i-lucide-check-check"
+          color="success"
+          size="xs"
+          class="font-semibold"
+          @click="store.openDecontrolModal(store.selectedDoc.value)"
+        >
+          Зняти з контролю
+        </UButton>
+        <UButton
+          v-else-if="store.getControlBadge(store.selectedDoc.value)?.status === 'closed'"
+          icon="i-lucide-rotate-ccw"
+          color="neutral"
+          variant="soft"
+          size="xs"
+          @click="store.reopenControl(store.selectedDoc.value)"
+        >
+          Повернути на контроль
+        </UButton>
+      </div>
+    </div>
+
     <div v-if="store.isLocked.value" class="flex items-center gap-2 p-3 rounded border border-warning/40 bg-warning/10 text-sm text-warning">
       <UIcon name="i-lucide-lock" class="flex-shrink-0" />
       Документ підписаний / у роботі — редагування заборонене. Щоб змінити — відхильте підпис/погодження (документ повернеться у чернетку).
@@ -1293,7 +1343,7 @@ email: example@mail.com" class="w-full" />
 
     <!-- Review Tracking Panel — поза fieldset, щоб disabled не блокував кнопки -->
     <DashboardReviewTrackingPanel
-      v-if="store.docStatus.value === 'signed' && form.reg_index && form.doc_id"
+      v-if="form.doc_id && ((store.docStatus.value === 'signed' && form.reg_index) || form.use_control_stamp || (store.selectedDoc.value && store.getControlBadge(store.selectedDoc.value)))"
       :doc-id="form.doc_id"
       class="mt-6"
       @generate-status-request="handleGenerateStatusRequest"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { DASHBOARD_KEY, createDashboardStore } from '~/composables/dashboard/useDashboard'
+import DecontrolModal from '~/components/dashboard/DecontrolModal.vue'
 
 definePageMeta({
   middleware: 'auth',
@@ -86,5 +87,6 @@ onMounted(async () => {
     <DashboardBulkDeliveryModal />
     <DashboardKepModal v-if="store.kepModalOpen.value" />
     <DashboardImportModal />
+    <DecontrolModal />
   </div>
 </template>

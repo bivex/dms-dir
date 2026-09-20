@@ -97,7 +97,14 @@ function handleCategoryClick(catId: string) {
       >
         {{ cat.label }}
         <UBadge v-if="cat.id === 'all'" :label="String(store.activeCount.value)" variant="subtle" size="xs" class="ml-auto" />
-        <UBadge v-else-if="cat.id === 'overdue_control' && store.statusCounts.value?.overdue" :label="String(store.statusCounts.value.overdue)" color="error" variant="subtle" size="xs" class="ml-auto" />
+        <UBadge
+          v-else-if="cat.id === 'overdue_control' && (store.statusCounts.value?.controlled || store.statusCounts.value?.overdue)"
+          :label="String(store.statusCounts.value?.controlled || store.statusCounts.value?.overdue)"
+          :color="store.statusCounts.value?.overdue ? 'error' : 'warning'"
+          variant="subtle"
+          size="xs"
+          class="ml-auto"
+        />
         <UBadge v-else-if="cat.id === 'approvals' && store.myApprovals.value.length" :label="String(store.myApprovals.value.length)" color="warning" variant="subtle" size="xs" class="ml-auto" />
         <UBadge v-else-if="cat.id === 'tasks' && store.myTasks.value.filter(t => t.status !== 'completed').length" :label="String(store.myTasks.value.filter(t => t.status !== 'completed').length)" color="error" variant="subtle" size="xs" class="ml-auto" />
         <UBadge v-else-if="cat.id === 'favorites' && store.favoritesCount.value" :label="String(store.favoritesCount.value)" color="warning" variant="subtle" size="xs" class="ml-auto" />

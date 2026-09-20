@@ -139,10 +139,13 @@ function formatDocDate(isoStr?: string | null): string {
         <UIcon :name="f.icon" class="w-3.5 h-3.5" />
         <span>{{ f.label }}</span>
         <span
-          v-if="store.statusCounts.value[f.id]"
-          class="text-[9px] px-1 py-0 rounded font-bold bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 ml-0.5"
+          v-if="f.id === 'overdue' ? (store.statusCounts.value.controlled || store.statusCounts.value.overdue) : store.statusCounts.value[f.id]"
+          class="text-[9px] px-1 py-0 rounded font-bold ml-0.5"
+          :class="f.id === 'overdue' && store.statusCounts.value.overdue
+            ? 'bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-300 border border-red-300 dark:border-red-900'
+            : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300'"
         >
-          {{ store.statusCounts.value[f.id] }}
+          {{ f.id === 'overdue' ? (store.statusCounts.value.controlled || store.statusCounts.value.overdue) : store.statusCounts.value[f.id] }}
         </span>
       </button>
     </div>
@@ -239,16 +242,32 @@ function formatDocDate(isoStr?: string | null): string {
             <span class="ml-1 font-semibold text-neutral-800 dark:text-neutral-200">{{ doc.title || '(без короткого змісту)' }}</span>
           </div>
 
-          <!-- Рядок метаданих: статус розгляду та ID -->
-          <div class="flex items-center justify-between pt-0.5">
-            <UBadge
-              :color="statusMeta(doc.status).color as any"
-              variant="subtle"
-              size="xs"
-              class="rounded font-bold px-1.5 py-0 text-[9px] tracking-wider"
-            >
-              {{ statusMeta(doc.status).label }}
-            </UBadge>
+          <!-- Рядок метаданих: статус розгляду, таймер дедлайну та ID -->
+          <div class="flex items-center justify-between gap-1 pt-1 flex-wrap">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <UBadge
+                :color="statusMeta(doc.status).color as any"
+                variant="subtle"
+                size="xs"
+                class="rounded font-bold px-1.5 py-0 text-[9px] tracking-wider"
+              >
+                {{ statusMeta(doc.status).label }}
+              </UBadge>
+
+              <!-- Візуальний таймер дедлайну (На контролі) -->
+              <UBadge
+                v-if="store.getControlBadge(doc)"
+                :color="store.getControlBadge(doc)?.color as any"
+                variant="subtle"
+                size="xs"
+                class="rounded font-bold px-1.5 py-0 text-[9px] gap-1 shadow-2xs"
+                :title="store.getControlBadge(doc)?.tooltip"
+              >
+                <UIcon :name="store.getControlBadge(doc)?.icon" class="w-3 h-3" />
+                <span>{{ store.getControlBadge(doc)?.label }}</span>
+              </UBadge>
+            </div>
+
             <span class="text-[10px] text-neutral-600 dark:text-neutral-400 font-mono">{{ doc.doc_id }}</span>
           </div>
         </div>
@@ -258,6 +277,32 @@ function formatDocDate(isoStr?: string | null): string {
           v-if="!store.selectMode.value" 
           class="flex flex-col gap-1 items-center self-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-gradient-to-l from-white dark:from-neutral-950 pl-2 sticky right-0"
         >
+          <!-- Зняття з контролю (якщо документ на контролі) -->
+          <UButton
+            v-if="store.getControlBadge(doc)?.isControlled"
+            icon="i-lucide-check-check"
+            color="success"
+            variant="ghost"
+            size="xs"
+            class="rounded hover:bg-success/15"
+            title="Зняти з контролю"
+            aria-label="Зняти з контролю"
+            @click.stop="store.openDecontrolModal(doc)"
+          />
+
+          <!-- Повернути на контроль (якщо вже знято) -->
+          <UButton
+            v-else-if="store.getControlBadge(doc)?.status === 'closed'"
+            icon="i-lucide-rotate-ccw"
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            class="rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            title="Повернути на контроль"
+            aria-label="Повернути на контроль"
+            @click.stop="store.reopenControl(doc)"
+          />
+
           <UButton
             icon="i-lucide-eye"
             color="primary"

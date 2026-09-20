@@ -118,19 +118,19 @@
         <span>{{ review.review_note }}</span>
       </div>
 
-      <!-- Actions / Response Form -->
+      <!-- Actions / Response Display -->
       <div v-if="review.review_status !== 'not_applicable'" class="flex flex-col gap-3">
-        <!-- Кнопки дій для не-responded стану -->
-        <div v-if="!showResponseForm && review.review_status !== 'responded'" class="rtp-actions">
+        <!-- Кнопки дій для активного контролю -->
+        <div v-if="review.review_status !== 'responded'" class="rtp-actions flex items-center gap-2">
           <UButton
-            icon="i-lucide-check"
+            icon="i-lucide-check-check"
             color="success"
-            variant="soft"
+            variant="solid"
             size="sm"
-            :loading="loading"
-            @click="openResponseForm"
+            class="font-semibold"
+            @click="handleDecontrol"
           >
-            Відповідь отримана
+            Зняти з контролю
           </UButton>
           <UButton
             icon="i-lucide-x"
@@ -144,29 +144,40 @@
           </UButton>
         </div>
 
-        <!-- Відображення успішного responded стану з можливістю редагування -->
-        <div v-if="!showResponseForm && review.review_status === 'responded'" class="rtp-responded flex items-center justify-between bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-900">
+        <!-- Відображення успішного зняття з контролю з деталями підстави -->
+        <div v-if="review.review_status === 'responded'" class="rtp-responded flex items-center justify-between bg-green-50 dark:bg-green-950/30 p-3.5 rounded-lg border border-green-200 dark:border-green-900">
           <div class="flex items-start gap-2.5">
             <UIcon name="i-lucide-check-circle-2" class="text-green-500 text-xl mt-0.5" />
-            <div class="flex flex-col gap-0.5">
-              <span class="text-green-800 dark:text-green-200 font-semibold text-sm">Відповідь отримана</span>
+            <div class="flex flex-col gap-1">
+              <span class="text-green-800 dark:text-green-200 font-bold text-sm">Документ знято з контролю</span>
               <span class="text-xs text-green-700 dark:text-green-300">
-                Дата: {{ review.response_received_at ? formatDate(review.response_received_at) : '—' }}
+                Дата виконання: {{ review.response_received_at ? formatDate(review.response_received_at) : '—' }}
               </span>
-              <span v-if="review.review_note" class="text-xs text-neutral-500 dark:text-neutral-400 italic mt-0.5">
-                «{{ review.review_note }}»
+              <span v-if="review.review_note" class="text-xs font-medium text-neutral-800 dark:text-neutral-200 bg-white/70 dark:bg-black/40 px-2.5 py-1.5 rounded border border-green-200 dark:border-green-900/60 mt-1">
+                📌 {{ review.review_note }}
               </span>
             </div>
           </div>
-          <UButton
-            icon="i-lucide-pencil"
-            color="success"
-            variant="ghost"
-            size="xs"
-            title="Змінити дату або коментар"
-            aria-label="Змінити дату або коментар"
-            @click="openResponseForm"
-          />
+          <div class="flex items-center gap-1">
+            <UButton
+              icon="i-lucide-pencil"
+              color="success"
+              variant="ghost"
+              size="xs"
+              title="Змінити підставу"
+              aria-label="Змінити підставу"
+              @click="handleDecontrol"
+            />
+            <UButton
+              icon="i-lucide-rotate-ccw"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              title="Повернути на контроль"
+              aria-label="Повернути на контроль"
+              @click="handleReopenControl"
+            />
+          </div>
         </div>
 
         <!-- Форма введення/редагування дати та коментаря -->
@@ -217,10 +228,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useReviewTracking } from '~/composables/dashboard/useReviewTracking'
+import { useDashboard } from '~/composables/dashboard/useDashboard'
 
 const props = defineProps<{ docId: string }>()
 const emit = defineEmits<{ 'generate-status-request': [] }>()
 
+const store = useDashboard()
 const generatingRequest = ref(false)
 
 const {
@@ -239,6 +252,27 @@ const {
 const showResponseForm = ref(false)
 const responseDate = ref('')
 const responseNote = ref('')
+
+function handleDecontrol() {
+  const target = store.docs.value.find(d => d.doc_id === props.docId) || store.selectedDoc.value
+  if (target) {
+    store.openDecontrolModal(target)
+  }
+}
+
+async function handleReopenControl() {
+  const target = store.docs.value.find(d => d.doc_id === props.docId) || store.selectedDoc.value
+  if (target) {
+    await store.reopenControl(target)
+    await fetchReview()
+  }
+}
+
+watch(() => store.decontrolModalOpen.value, (isOpen) => {
+  if (!isOpen) {
+    fetchReview()
+  }
+})
 
 onMounted(fetchReview)
 

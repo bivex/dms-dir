@@ -53,23 +53,128 @@ export function useDocuments(deps: {
     docs.value.filter(d => !d.archived && (d.folder_id ?? null) === null).length
   )
 
-  const _isOverdue = (d: DocEntry): boolean => {
-    // 1. Прострочений трекінг відповіді від адресата ( review_status === 'overdue' )
-    if (d.review_status === 'overdue') return true
+  const getControlBadge = (d: DocEntry): {
+    status: 'closed' | 'overdue' | 'today' | 'urgent' | 'pending'
+    label: string
+    color: 'success' | 'error' | 'warning' | 'info' | 'neutral'
+    icon: string
+    daysDiff: number | null
+    tooltip?: string
+    isControlled: boolean
+  } | null => {
+    // 1. Документ знято з контролю
+    if (d.review_status === 'responded') {
+      return {
+        status: 'closed',
+        label: 'Знято з контролю',
+        color: 'success',
+        icon: 'i-lucide-check-check',
+        daysDiff: null,
+        tooltip: d.review_note ? `Підстава: ${d.review_note}` : 'Документ успішно виконано / знято з контролю',
+        isControlled: false
+      }
+    }
 
-    // 2. Стара логіка: завислі на погодженні чи підписі понад 7 днів
-    if (d.status === 'signed' || d.status === 'published' || d.status === 'rejected') return false
-    if (!d.status.startsWith('pending')) return false
-    const created = d.created_at ? new Date(d.created_at).getTime() : 0
-    if (!created) return false
-    const days = (Date.now() - created) / 86400000
-    return days > 7
+    // 2. Трекінг вимкнено явно
+    if (d.review_status === 'not_applicable') {
+      return null
+    }
+
+    // 3. Обчислюємо дедлайн:
+    let targetTime: number | null = null
+
+    if (d.expected_response_date) {
+      targetTime = new Date(d.expected_response_date).getTime()
+    } else if (d.review_status === 'pending' || d.review_status === 'overdue') {
+      const base = d.registered_at ? new Date(d.registered_at).getTime() : (d.created_at ? new Date(d.created_at).getTime() : 0)
+      if (base) targetTime = base + (30 * 86400000)
+    } else if (d.status && d.status.startsWith('pending')) {
+      const base = d.created_at ? new Date(d.created_at).getTime() : 0
+      if (base) targetTime = base + (7 * 86400000)
+    }
+
+    if (!targetTime) return null
+
+    const now = Date.now()
+    const diffDays = Math.ceil((targetTime - now) / 86400000)
+
+    if (diffDays < 0 || d.review_status === 'overdue') {
+      const overdueDays = Math.abs(diffDays)
+      let daysText = `${overdueDays} дн.`
+      if (overdueDays === 1) daysText = '1 день'
+      else if (overdueDays >= 2 && overdueDays <= 4) daysText = `${overdueDays} дні`
+      return {
+        status: 'overdue',
+        label: overdueDays > 0 ? `Прострочено (${daysText})` : 'Прострочено',
+        color: 'error',
+        icon: 'i-lucide-alert-circle',
+        daysDiff: diffDays,
+        tooltip: `Термін виконання минув (${daysText} тому)`,
+        isControlled: true
+      }
+    }
+
+    if (diffDays === 0) {
+      return {
+        status: 'today',
+        label: 'Сьогодні термін',
+        color: 'warning',
+        icon: 'i-lucide-clock-alert',
+        daysDiff: 0,
+        tooltip: 'Сьогодні останній день виконання документа',
+        isControlled: true
+      }
+    }
+
+    if (diffDays === 1) {
+      return {
+        status: 'urgent',
+        label: 'Залишився 1 день',
+        color: 'warning',
+        icon: 'i-lucide-hourglass',
+        daysDiff: 1,
+        tooltip: 'Залишився 1 день до завершення терміну',
+        isControlled: true
+      }
+    }
+
+    if (diffDays >= 2 && diffDays <= 4) {
+      return {
+        status: 'urgent',
+        label: `Залишилось ${diffDays} дні`,
+        color: 'warning',
+        icon: 'i-lucide-hourglass',
+        daysDiff: diffDays,
+        tooltip: `Залишилось ${diffDays} дні до дедлайну`,
+        isControlled: true
+      }
+    }
+
+    return {
+      status: 'pending',
+      label: `Залишилось ${diffDays} дн.`,
+      color: 'info',
+      icon: 'i-lucide-clock',
+      daysDiff: diffDays,
+      tooltip: `Термін виконання: до ${new Date(targetTime).toLocaleDateString('uk-UA')}`,
+      isControlled: true
+    }
+  }
+
+  const _isOverdue = (d: DocEntry): boolean => {
+    const badge = getControlBadge(d)
+    return badge?.status === 'overdue'
+  }
+
+  const _isControlled = (d: DocEntry): boolean => {
+    const badge = getControlBadge(d)
+    return !!badge?.isControlled
   }
 
   function _matchesStatus(d: DocEntry): boolean {
     const f = statusFilter.value
     if (f === 'all') return true
-    if (f === 'overdue') return _isOverdue(d)
+    if (f === 'overdue') return _isControlled(d) || _isOverdue(d)
     return d.status === f
   }
 
@@ -86,18 +191,33 @@ export function useDocuments(deps: {
         || (d.reg_index || '').toLowerCase().includes(q)
       )
     }
-    if (activeCategory.value === 'favorites') return list.filter(d => favoritesSet.value.has(d.doc_id) && !d.archived).filter(_matchesStatus)
-    if (activeCategory.value === 'archive') return list.filter(d => d.archived).filter(_matchesStatus)
-    if (activeCategory.value === 'trash') return list.filter(d => d.status === 'deleted')
-    if (activeCategory.value === 'folder') {
-      return list.filter(d => !d.archived && (d.folder_id ?? null) === activeFolderId.value).filter(_matchesStatus)
+    if (activeCategory.value === 'favorites') list = list.filter(d => favoritesSet.value.has(d.doc_id) && !d.archived).filter(_matchesStatus)
+    else if (activeCategory.value === 'archive') list = list.filter(d => d.archived).filter(_matchesStatus)
+    else if (activeCategory.value === 'trash') list = list.filter(d => d.status === 'deleted')
+    else if (activeCategory.value === 'folder') {
+      list = list.filter(d => !d.archived && (d.folder_id ?? null) === activeFolderId.value).filter(_matchesStatus)
     }
-    if (activeCategory.value === 'calendar') {
+    else if (activeCategory.value === 'calendar') {
       list = list.filter(d => !d.archived)
-      if (selectedDay.value) return list.filter(d => docDayKey(d) === selectedDay.value).filter(_matchesStatus)
-      return list.filter(_matchesStatus)
+      if (selectedDay.value) list = list.filter(d => docDayKey(d) === selectedDay.value).filter(_matchesStatus)
+      else list = list.filter(_matchesStatus)
     }
-    return list.filter(d => !d.archived).filter(_matchesStatus)
+    else {
+      list = list.filter(d => !d.archived).filter(_matchesStatus)
+    }
+
+    // Якщо ми у розділі «На контролі» — сортуємо за терміновістю (найбільш прострочені та термінові зверху)
+    if (statusFilter.value === 'overdue') {
+      list = [...list].sort((a, b) => {
+        const bA = getControlBadge(a)
+        const bB = getControlBadge(b)
+        const dA = bA?.daysDiff ?? 9999
+        const dB = bB?.daysDiff ?? 9999
+        return dA - dB
+      })
+    }
+
+    return list
   })
 
   // лічильники для бейджів швидких фільтрів (по активних, не архівних)
@@ -111,6 +231,7 @@ export function useDocuments(deps: {
       signed: active.filter(d => d.status === 'signed' || d.status === 'published').length,
       rejected: active.filter(d => d.status === 'rejected').length,
       overdue: active.filter(_isOverdue).length,
+      controlled: active.filter(_isControlled).length,
     }
   })
 
@@ -354,6 +475,98 @@ export function useDocuments(deps: {
     }
   }
 
+  const decontrolModalOpen = ref(false)
+  const decontrolTargetDoc = ref<DocEntry | null>(null)
+  const decontrolling = ref(false)
+
+  function openDecontrolModal(doc: DocEntry) {
+    decontrolTargetDoc.value = doc
+    decontrolModalOpen.value = true
+  }
+
+  function closeDecontrolModal() {
+    decontrolModalOpen.value = false
+    decontrolTargetDoc.value = null
+  }
+
+  async function submitDecontrol(payload: {
+    reason_type: string
+    reply_number?: string
+    resolution_text?: string
+    resolution_author?: string
+    decontrol_date?: string
+    note?: string
+  }) {
+    if (!decontrolTargetDoc.value) return
+    const docId = decontrolTargetDoc.value.doc_id
+    decontrolling.value = true
+    try {
+      const res = await apiFetch<{
+        review_status: string
+        response_received_at: string | null
+        review_note: string | null
+      }>(`/documents/${docId}/decontrol`, {
+        method: 'POST',
+        body: payload
+      })
+
+      const target = docs.value.find(d => d.doc_id === docId)
+      if (target) {
+        target.review_status = res.review_status
+        target.response_received_at = res.response_received_at
+        target.review_note = res.review_note
+      }
+
+      toast.add({
+        title: 'Документ знято з контролю',
+        description: res.review_note || undefined,
+        color: 'success'
+      })
+      closeDecontrolModal()
+    }
+    catch (err: any) {
+      toast.add({
+        title: 'Помилка зняття з контролю',
+        description: err?.data?.detail || String(err),
+        color: 'error'
+      })
+    }
+    finally {
+      decontrolling.value = false
+    }
+  }
+
+  async function reopenControl(doc: DocEntry) {
+    try {
+      const res = await apiFetch<{
+        review_status: string
+        response_received_at: string | null
+        review_note: string | null
+      }>(`/documents/${doc.doc_id}/reopen-control`, {
+        method: 'POST',
+        body: {}
+      })
+
+      const target = docs.value.find(d => d.doc_id === doc.doc_id)
+      if (target) {
+        target.review_status = res.review_status
+        target.response_received_at = null
+      }
+
+      toast.add({
+        title: 'Документ повернуто на контроль',
+        color: 'info'
+      })
+    }
+    catch (err: any) {
+      toast.add({
+        title: 'Помилка повернення на контроль',
+        description: err?.data?.detail || String(err),
+        color: 'error'
+      })
+    }
+  }
+
   return {
     docs,
     selectedId,
@@ -387,6 +600,14 @@ export function useDocuments(deps: {
     deleteSelected,
     archiveDoc,
     unarchiveDoc,
-    deleteAllDocs
+    deleteAllDocs,
+    getControlBadge,
+    decontrolModalOpen,
+    decontrolTargetDoc,
+    decontrolling,
+    openDecontrolModal,
+    closeDecontrolModal,
+    submitDecontrol,
+    reopenControl
   }
 }

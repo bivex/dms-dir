@@ -249,6 +249,15 @@ export function createDashboardStore() {
     archiveDoc: documents.archiveDoc,
     unarchiveDoc: documents.unarchiveDoc,
     deleteAllDocs: documents.deleteAllDocs,
+    // контроль та деконтроль
+    getControlBadge: documents.getControlBadge,
+    decontrolModalOpen: documents.decontrolModalOpen,
+    decontrolTargetDoc: documents.decontrolTargetDoc,
+    decontrolling: documents.decontrolling,
+    openDecontrolModal: documents.openDecontrolModal,
+    closeDecontrolModal: documents.closeDecontrolModal,
+    submitDecontrol: documents.submitDecontrol,
+    reopenControl: documents.reopenControl,
     // folders
     folders: folders.folders,
     activeFolderId: folders.activeFolderId,
