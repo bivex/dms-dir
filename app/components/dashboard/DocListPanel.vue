@@ -86,8 +86,8 @@ function formatDocDate(isoStr?: string | null): string {
     <!-- Шапка реєстру -->
     <div class="p-3 border-b border-default flex items-center justify-between bg-neutral-100/80 dark:bg-neutral-950/80 backdrop-blur-md sticky top-0 z-10">
       <div class="min-w-0">
-        <div class="font-bold text-xs uppercase tracking-wider text-neutral-700 dark:text-neutral-350">{{ store.listHeaderLabel.value }}</div>
-        <div class="text-[10px] font-bold text-muted/70 mt-0.5">{{ store.filteredDocs.value.length }} записів у реєстрі</div>
+        <div class="font-bold text-xs uppercase tracking-wider text-neutral-800 dark:text-neutral-200">{{ store.listHeaderLabel.value }}</div>
+        <div class="text-[10px] font-bold text-neutral-600 dark:text-neutral-400 mt-0.5">{{ store.filteredDocs.value.length }} записів у реєстрі</div>
       </div>
       <div class="flex items-center gap-1">
         <UButton
@@ -97,11 +97,29 @@ function formatDocDate(isoStr?: string | null): string {
           size="xs"
           class="rounded"
           :title="store.selectMode.value ? 'Вийти з режиму вибору' : 'Вибрати для дії'"
+          :aria-label="store.selectMode.value ? 'Вийти з режиму вибору' : 'Вибрати для дії'"
           @click="store.toggleSelectMode()"
         />
-        <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" class="rounded" @click="store.refreshAll()" />
+        <UButton
+          icon="i-lucide-refresh-cw"
+          variant="ghost"
+          size="xs"
+          color="neutral"
+          class="rounded"
+          title="Оновити список документів"
+          aria-label="Оновити список документів"
+          @click="store.refreshAll()"
+        />
         <UDropdownMenu :items="moreItems" :_content="{ align: 'end' }">
-          <UButton icon="i-lucide-ellipsis" variant="ghost" color="neutral" size="xs" class="rounded" title="Додаткові дії" />
+          <UButton
+            icon="i-lucide-ellipsis"
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            class="rounded"
+            title="Додаткові дії"
+            aria-label="Додаткові дії"
+          />
         </UDropdownMenu>
       </div>
     </div>
@@ -111,17 +129,19 @@ function formatDocDate(isoStr?: string | null): string {
       <button
         v-for="f in quickFilters"
         :key="f.id"
+        type="button"
+        :aria-label="`Фільтр: ${f.label}`"
         class="px-2 py-0.5 rounded text-[11px] font-semibold transition-all duration-100 flex items-center gap-1 border"
         :class="store.statusFilter.value === f.id
-          ? 'bg-primary/10 text-primary border-primary/30 dark:bg-primary/20 dark:text-primary-400 font-bold'
-          : 'bg-transparent text-muted border-transparent hover:bg-elevated hover:text-default'"
+          ? 'bg-primary/15 text-primary-800 dark:text-primary-300 border-primary/40 font-bold'
+          : 'bg-transparent text-neutral-600 dark:text-neutral-400 border-transparent hover:bg-elevated hover:text-default'"
         @click="store.statusFilter.value = f.id"
       >
         <UIcon :name="f.icon" class="w-3.5 h-3.5" />
         <span>{{ f.label }}</span>
         <span
           v-if="store.statusCounts.value[f.id]"
-          class="text-[9px] px-1 py-0 rounded font-bold bg-neutral-200 dark:bg-neutral-800 text-muted ml-0.5"
+          class="text-[9px] px-1 py-0 rounded font-bold bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 ml-0.5"
         >
           {{ store.statusCounts.value[f.id] }}
         </span>
@@ -199,25 +219,25 @@ function formatDocDate(isoStr?: string | null): string {
           <div class="flex items-center justify-between text-[11px] font-mono">
             <span 
               class="font-bold uppercase tracking-tight"
-              :class="doc.reg_index ? 'text-primary dark:text-primary-400 text-xs' : 'text-neutral-400 dark:text-neutral-500'"
+              :class="doc.reg_index ? 'text-primary-700 dark:text-primary-400 text-xs' : 'text-neutral-600 dark:text-neutral-400'"
             >
               {{ doc.reg_index || 'ПРОЕКТ' }}
             </span>
-            <span class="text-neutral-450 dark:text-neutral-500 font-bold">
+            <span class="text-neutral-600 dark:text-neutral-400 font-bold">
               {{ doc.reg_date || formatDocDate(doc.created_at) }}
             </span>
           </div>
 
           <!-- Кореспондент / Автор (org_name) — Ключове поле для реєстру -->
           <div class="text-[11px] text-neutral-800 dark:text-neutral-200 truncate leading-tight">
-            <span class="text-neutral-400 dark:text-neutral-500 font-medium">Кореспондент:</span>
+            <span class="text-neutral-600 dark:text-neutral-400 font-medium">Кореспондент:</span>
             <span class="font-bold ml-1">{{ doc.org_name || '—' }}</span>
           </div>
 
           <!-- Короткий зміст документа -->
-          <div class="text-[11px] text-neutral-600 dark:text-neutral-400 line-clamp-2 leading-relaxed">
-            <span class="text-neutral-400 dark:text-neutral-500 font-medium">Короткий зміст:</span>
-            <span class="ml-1 font-semibold text-neutral-700 dark:text-neutral-350">{{ doc.title || '(без короткого змісту)' }}</span>
+          <div class="text-[11px] text-neutral-700 dark:text-neutral-300 line-clamp-2 leading-relaxed">
+            <span class="text-neutral-600 dark:text-neutral-400 font-medium">Короткий зміст:</span>
+            <span class="ml-1 font-semibold text-neutral-800 dark:text-neutral-200">{{ doc.title || '(без короткого змісту)' }}</span>
           </div>
 
           <!-- Рядок метаданих: статус розгляду та ID -->
@@ -230,7 +250,7 @@ function formatDocDate(isoStr?: string | null): string {
             >
               {{ statusMeta(doc.status).label }}
             </UBadge>
-            <span class="text-[10px] text-neutral-400 font-mono">{{ doc.doc_id }}</span>
+            <span class="text-[10px] text-neutral-600 dark:text-neutral-400 font-mono">{{ doc.doc_id }}</span>
           </div>
         </div>
 
@@ -246,6 +266,7 @@ function formatDocDate(isoStr?: string | null): string {
             size="xs"
             class="rounded hover:bg-primary/10"
             title="Швидкий перегляд"
+            aria-label="Швидкий перегляд"
             @click.stop="store.previewDoc(doc)"
           />
           <UButton
@@ -255,6 +276,7 @@ function formatDocDate(isoStr?: string | null): string {
             size="xs"
             class="rounded"
             :title="store.isFavorite(doc.doc_id) ? 'Прибрати з обраних' : 'Додати в обрані'"
+            :aria-label="store.isFavorite(doc.doc_id) ? 'Прибрати з обраних' : 'Додати в обрані'"
             @click.stop="store.toggleFavorite(doc.doc_id)"
           />
           <UButton
@@ -265,6 +287,7 @@ function formatDocDate(isoStr?: string | null): string {
             size="xs"
             class="rounded"
             title="Відновити з архіву"
+            aria-label="Відновити з архіву"
             @click.stop="store.unarchiveDoc(doc.doc_id)"
           />
           <UButton
@@ -275,6 +298,7 @@ function formatDocDate(isoStr?: string | null): string {
             size="xs"
             class="rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"
             title="В архів"
+            aria-label="В архів"
             @click.stop="store.archiveDoc(doc.doc_id)"
           />
         </div>
