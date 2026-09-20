@@ -1,6 +1,8 @@
 import type { Ref } from 'vue'
 import type { DocEntry } from './types'
 import type { DocFormStore } from './useDocForm'
+import { useDocumentControl } from './useDocumentControl'
+import { useDocumentFilters } from './useDocumentFilters'
 
 /**
  * Список документів + вибір + CRUD + масове видалення + архівування.
@@ -33,216 +35,30 @@ export function useDocuments(deps: {
 
   const selectedId = ref<string | null>(null)
 
-  // швидкий фільтр за статусом: all | draft | pending_approval | pending_signatures | signed | rejected | overdue
-  const statusFilter = ref<string>('all')
-
   // масовий вибір на видалення
   const selectMode = ref(false)
   const selectedForDelete = ref<Set<string>>(new Set())
   const deletingBulk = ref(false)
 
   const selectedDoc = computed(() => docs.value.find(d => d.doc_id === selectedId.value) ?? null)
-  const archivedCount = computed(() => docs.value.filter(d => d.archived).length)
-  const activeCount = computed(() => docs.value.filter(d => !d.archived).length)
-  // лічильник обраних — лише ті, що реально існують і не в архіві (без «привидів»
-  // від видалених/архівованих документів, які лишились у localStorage)
-  const favoritesCount = computed(() =>
-    docs.value.filter(d => !d.archived && favoritesSet.value.has(d.doc_id)).length
-  )
-  const noFolderCount = computed(() =>
-    docs.value.filter(d => !d.archived && (d.folder_id ?? null) === null).length
-  )
 
-  const getControlBadge = (d: DocEntry): {
-    status: 'closed' | 'overdue' | 'today' | 'urgent' | 'pending'
-    label: string
-    color: 'success' | 'error' | 'warning' | 'info' | 'neutral'
-    icon: string
-    daysDiff: number | null
-    tooltip?: string
-    isControlled: boolean
-  } | null => {
-    // 1. Документ знято з контролю
-    if (d.review_status === 'responded') {
-      return {
-        status: 'closed',
-        label: 'Знято з контролю',
-        color: 'success',
-        icon: 'i-lucide-check-check',
-        daysDiff: null,
-        tooltip: d.review_note ? `Підстава: ${d.review_note}` : 'Документ успішно виконано / знято з контролю',
-        isControlled: false
-      }
-    }
+  // Контроль та дедлайни документів
+  const control = useDocumentControl({ apiFetch, docs })
 
-    // 2. Трекінг вимкнено явно
-    if (d.review_status === 'not_applicable') {
-      return null
-    }
-
-    // 3. Обчислюємо дедлайн:
-    let targetTime: number | null = null
-
-    if (d.expected_response_date) {
-      targetTime = new Date(d.expected_response_date).getTime()
-    } else if (d.review_status === 'pending' || d.review_status === 'overdue') {
-      const base = d.registered_at ? new Date(d.registered_at).getTime() : (d.created_at ? new Date(d.created_at).getTime() : 0)
-      if (base) targetTime = base + (30 * 86400000)
-    } else if (d.status && d.status.startsWith('pending')) {
-      const base = d.created_at ? new Date(d.created_at).getTime() : 0
-      if (base) targetTime = base + (7 * 86400000)
-    }
-
-    if (!targetTime) return null
-
-    const now = Date.now()
-    const diffDays = Math.ceil((targetTime - now) / 86400000)
-
-    if (diffDays < 0 || d.review_status === 'overdue') {
-      const overdueDays = Math.abs(diffDays)
-      let daysText = `${overdueDays} дн.`
-      if (overdueDays === 1) daysText = '1 день'
-      else if (overdueDays >= 2 && overdueDays <= 4) daysText = `${overdueDays} дні`
-      return {
-        status: 'overdue',
-        label: overdueDays > 0 ? `Прострочено (${daysText})` : 'Прострочено',
-        color: 'error',
-        icon: 'i-lucide-alert-circle',
-        daysDiff: diffDays,
-        tooltip: `Термін виконання минув (${daysText} тому)`,
-        isControlled: true
-      }
-    }
-
-    if (diffDays === 0) {
-      return {
-        status: 'today',
-        label: 'Сьогодні термін',
-        color: 'warning',
-        icon: 'i-lucide-clock-alert',
-        daysDiff: 0,
-        tooltip: 'Сьогодні останній день виконання документа',
-        isControlled: true
-      }
-    }
-
-    if (diffDays === 1) {
-      return {
-        status: 'urgent',
-        label: 'Залишився 1 день',
-        color: 'warning',
-        icon: 'i-lucide-hourglass',
-        daysDiff: 1,
-        tooltip: 'Залишився 1 день до завершення терміну',
-        isControlled: true
-      }
-    }
-
-    if (diffDays >= 2 && diffDays <= 4) {
-      return {
-        status: 'urgent',
-        label: `Залишилось ${diffDays} дні`,
-        color: 'warning',
-        icon: 'i-lucide-hourglass',
-        daysDiff: diffDays,
-        tooltip: `Залишилось ${diffDays} дні до дедлайну`,
-        isControlled: true
-      }
-    }
-
-    return {
-      status: 'pending',
-      label: `Залишилось ${diffDays} дн.`,
-      color: 'info',
-      icon: 'i-lucide-clock',
-      daysDiff: diffDays,
-      tooltip: `Термін виконання: до ${new Date(targetTime).toLocaleDateString('uk-UA')}`,
-      isControlled: true
-    }
-  }
-
-  const _isOverdue = (d: DocEntry): boolean => {
-    const badge = getControlBadge(d)
-    return badge?.status === 'overdue'
-  }
-
-  const _isControlled = (d: DocEntry): boolean => {
-    const badge = getControlBadge(d)
-    return !!badge?.isControlled
-  }
-
-  function _matchesStatus(d: DocEntry): boolean {
-    const f = statusFilter.value
-    if (f === 'all') return true
-    if (f === 'overdue') return _isControlled(d) || _isOverdue(d)
-    return d.status === f
-  }
-
-  const filteredDocs = computed(() => {
-    let list = docs.value
-    if (searchQuery.value) {
-      const q = searchQuery.value.toLowerCase().trim()
-      // розширений пошук: за номером, заголовком, типом, контрагентом, реєстр. індексом
-      list = list.filter(d =>
-        d.title.toLowerCase().includes(q)
-        || d.doc_id.toLowerCase().includes(q)
-        || (d.doc_type || '').toLowerCase().includes(q)
-        || (d.org_name || '').toLowerCase().includes(q)
-        || (d.reg_index || '').toLowerCase().includes(q)
-      )
-    }
-    if (activeCategory.value === 'favorites') list = list.filter(d => favoritesSet.value.has(d.doc_id) && !d.archived).filter(_matchesStatus)
-    else if (activeCategory.value === 'archive') list = list.filter(d => d.archived).filter(_matchesStatus)
-    else if (activeCategory.value === 'trash') list = list.filter(d => d.status === 'deleted')
-    else if (activeCategory.value === 'folder') {
-      list = list.filter(d => !d.archived && (d.folder_id ?? null) === activeFolderId.value).filter(_matchesStatus)
-    }
-    else if (activeCategory.value === 'calendar') {
-      list = list.filter(d => !d.archived)
-      if (selectedDay.value) list = list.filter(d => docDayKey(d) === selectedDay.value).filter(_matchesStatus)
-      else list = list.filter(_matchesStatus)
-    }
-    else {
-      list = list.filter(d => !d.archived).filter(_matchesStatus)
-    }
-
-    // Якщо ми у розділі «На контролі» — сортуємо за терміновістю (найбільш прострочені та термінові зверху)
-    if (statusFilter.value === 'overdue') {
-      list = [...list].sort((a, b) => {
-        const bA = getControlBadge(a)
-        const bB = getControlBadge(b)
-        const dA = bA?.daysDiff ?? 9999
-        const dB = bB?.daysDiff ?? 9999
-        return dA - dB
-      })
-    }
-
-    return list
-  })
-
-  // лічильники для бейджів швидких фільтрів (по активних, не архівних)
-  const statusCounts = computed(() => {
-    const active = docs.value.filter(d => !d.archived)
-    return {
-      all: active.length,
-      draft: active.filter(d => d.status === 'draft').length,
-      pending_approval: active.filter(d => d.status === 'pending_approval').length,
-      pending_signatures: active.filter(d => d.status === 'pending_signatures').length,
-      signed: active.filter(d => d.status === 'signed' || d.status === 'published').length,
-      rejected: active.filter(d => d.status === 'rejected').length,
-      overdue: active.filter(_isOverdue).length,
-      controlled: active.filter(_isControlled).length,
-    }
-  })
-
-  const activeFolder = computed(() => folders.value.find(f => f.id === activeFolderId.value) ?? null)
-  const listHeaderLabel = computed(() => {
-    if (activeCategory.value === 'folder') return activeFolder.value?.name ?? 'Без папки'
-    if (activeCategory.value === 'favorites') return 'Обрані'
-    if (activeCategory.value === 'archive') return 'Архів'
-    if (activeCategory.value === 'trash') return 'Кошик'
-    if (activeCategory.value === 'calendar') return selectedDay.value ? selectedDayLabel.value : 'Календар'
-    return 'Всі документи'
+  // Фільтри та лічильники реєстру
+  const filters = useDocumentFilters({
+    docs,
+    folders,
+    activeCategory,
+    searchQuery,
+    activeFolderId,
+    selectedDay,
+    docDayKey,
+    selectedDayLabel,
+    favoritesSet,
+    getControlBadge: control.getControlBadge,
+    isOverdue: control.isOverdue,
+    isControlled: control.isControlled
   })
 
   async function reloadDocs() {
@@ -400,11 +216,11 @@ export function useDocuments(deps: {
     selectedForDelete.value = next
   }
   function toggleSelectAll() {
-    if (selectedForDelete.value.size === filteredDocs.value.length) {
+    if (selectedForDelete.value.size === filters.filteredDocs.value.length) {
       selectedForDelete.value = new Set()
     }
     else {
-      selectedForDelete.value = new Set(filteredDocs.value.map(d => d.doc_id))
+      selectedForDelete.value = new Set(filters.filteredDocs.value.map(d => d.doc_id))
     }
   }
 
@@ -475,98 +291,6 @@ export function useDocuments(deps: {
     }
   }
 
-  const decontrolModalOpen = ref(false)
-  const decontrolTargetDoc = ref<DocEntry | null>(null)
-  const decontrolling = ref(false)
-
-  function openDecontrolModal(doc: DocEntry) {
-    decontrolTargetDoc.value = doc
-    decontrolModalOpen.value = true
-  }
-
-  function closeDecontrolModal() {
-    decontrolModalOpen.value = false
-    decontrolTargetDoc.value = null
-  }
-
-  async function submitDecontrol(payload: {
-    reason_type: string
-    reply_number?: string
-    resolution_text?: string
-    resolution_author?: string
-    decontrol_date?: string
-    note?: string
-  }) {
-    if (!decontrolTargetDoc.value) return
-    const docId = decontrolTargetDoc.value.doc_id
-    decontrolling.value = true
-    try {
-      const res = await apiFetch<{
-        review_status: string
-        response_received_at: string | null
-        review_note: string | null
-      }>(`/documents/${docId}/decontrol`, {
-        method: 'POST',
-        body: payload
-      })
-
-      const target = docs.value.find(d => d.doc_id === docId)
-      if (target) {
-        target.review_status = res.review_status
-        target.response_received_at = res.response_received_at
-        target.review_note = res.review_note
-      }
-
-      toast.add({
-        title: 'Документ знято з контролю',
-        description: res.review_note || undefined,
-        color: 'success'
-      })
-      closeDecontrolModal()
-    }
-    catch (err: any) {
-      toast.add({
-        title: 'Помилка зняття з контролю',
-        description: err?.data?.detail || String(err),
-        color: 'error'
-      })
-    }
-    finally {
-      decontrolling.value = false
-    }
-  }
-
-  async function reopenControl(doc: DocEntry) {
-    try {
-      const res = await apiFetch<{
-        review_status: string
-        response_received_at: string | null
-        review_note: string | null
-      }>(`/documents/${doc.doc_id}/reopen-control`, {
-        method: 'POST',
-        body: {}
-      })
-
-      const target = docs.value.find(d => d.doc_id === doc.doc_id)
-      if (target) {
-        target.review_status = res.review_status
-        target.response_received_at = null
-      }
-
-      toast.add({
-        title: 'Документ повернуто на контроль',
-        color: 'info'
-      })
-    }
-    catch (err: any) {
-      toast.add({
-        title: 'Помилка повернення на контроль',
-        description: err?.data?.detail || String(err),
-        color: 'error'
-      })
-    }
-  }
-
   return {
     docs,
     selectedId,
@@ -576,15 +300,15 @@ export function useDocuments(deps: {
     selectedForDelete,
     deletingBulk,
     selectedDoc,
-    archivedCount,
-    activeCount,
-    favoritesCount,
-    noFolderCount,
-    filteredDocs,
-    statusFilter,
-    statusCounts,
-    activeFolder,
-    listHeaderLabel,
+    archivedCount: filters.archivedCount,
+    activeCount: filters.activeCount,
+    favoritesCount: filters.favoritesCount,
+    noFolderCount: filters.noFolderCount,
+    filteredDocs: filters.filteredDocs,
+    statusFilter: filters.statusFilter,
+    statusCounts: filters.statusCounts,
+    activeFolder: filters.activeFolder,
+    listHeaderLabel: filters.listHeaderLabel,
     reloadDocs,
     refreshAll,
     selectDoc,
@@ -601,13 +325,13 @@ export function useDocuments(deps: {
     archiveDoc,
     unarchiveDoc,
     deleteAllDocs,
-    getControlBadge,
-    decontrolModalOpen,
-    decontrolTargetDoc,
-    decontrolling,
-    openDecontrolModal,
-    closeDecontrolModal,
-    submitDecontrol,
-    reopenControl
+    getControlBadge: control.getControlBadge,
+    decontrolModalOpen: control.decontrolModalOpen,
+    decontrolTargetDoc: control.decontrolTargetDoc,
+    decontrolling: control.decontrolling,
+    openDecontrolModal: control.openDecontrolModal,
+    closeDecontrolModal: control.closeDecontrolModal,
+    submitDecontrol: control.submitDecontrol,
+    reopenControl: control.reopenControl
   }
 }
