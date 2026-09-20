@@ -411,7 +411,15 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
           .map(a => ({ user_id: (a as any).user_id as number, full_name: a.full_name, position: a.position }))
       : []
     
-    const cj = (full as Record<string, unknown>).content_json as Record<string, unknown> | undefined
+    const rawCj = (full as Record<string, unknown>).content_json
+    let cj: Record<string, unknown> | undefined
+    if (typeof rawCj === 'string') {
+      try {
+        cj = JSON.parse(rawCj)
+      } catch {}
+    } else if (rawCj && typeof rawCj === 'object') {
+      cj = rawCj as Record<string, unknown>
+    }
     if (cj) {
       form.org_name = String(cj.org_name ?? form.org_name)
       form.subject_type = String(cj.subject_type ?? form.subject_type)
@@ -436,7 +444,7 @@ export function useDocForm(apiFetch: ReturnType<typeof useAuth>['apiFetch']) {
       form.extra_stamps = Array.isArray(cj.extra_stamps) ? cj.extra_stamps.map(String) : []
       const b = cj.body
       form.body = Array.isArray(b) ? b.join('\n') : String(b ?? '')
-      const addrs = cj.addressees
+      const addrs = cj.addressees !== undefined && cj.addressees !== null ? cj.addressees : cj.addressee
       form.addressees = Array.isArray(addrs) ? addrs.join('\n\n') : String(addrs ?? '')
       form.sender_contacts = String(cj.sender_contacts ?? '')
     }

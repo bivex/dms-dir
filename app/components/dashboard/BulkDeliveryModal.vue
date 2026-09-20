@@ -26,6 +26,11 @@ function getDocTitle(docId: string) {
   return store.docs.value.find(d => d.doc_id === docId)?.title || docId
 }
 
+const counterpartyOptions = computed(() => {
+  const list = (store.counterparties?.value || []) as Array<any>
+  return list.map(c => ({ label: `${c.name} (${c.code || ''})`, value: String(c.id) }))
+})
+
 onMounted(() => {
   store.reloadCounterparties()
 })
@@ -103,7 +108,7 @@ onMounted(() => {
                 </span>
                 <USelect
                   placeholder="Обрати з контрагентів..."
-                  :items="store.counterparties.value.map(c => ({ label: `${c.name} (${c.code})`, value: String(c.id) }))"
+                  :items="counterpartyOptions"
                   class="w-48 text-xs"
                   @update:model-value="onSelectCounterparty"
                 />

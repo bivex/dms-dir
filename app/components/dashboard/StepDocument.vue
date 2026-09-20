@@ -330,13 +330,13 @@ const addresseesCount = computed(() => {
 })
 
 const addresseeMode = ref<'cards' | 'raw'>('cards')
-const addresseeCards = ref<string[]>([])
+const addresseeCards = ref<string[]>([''])
 
 // Synchronize addresseeCards from form.addressees
 watch(() => form.addressees, (val) => {
   if (!val) {
-    if (addresseeCards.value.length !== 0) {
-      addresseeCards.value = []
+    if (addresseeCards.value.length === 0 || addresseeCards.value[0] !== '') {
+      addresseeCards.value = ['']
     }
     return
   }
@@ -357,6 +357,9 @@ function addAddresseeCard(text: string = '') {
 
 function removeAddresseeCard(index: number) {
   addresseeCards.value.splice(index, 1)
+  if (addresseeCards.value.length === 0) {
+    addresseeCards.value = ['']
+  }
   syncCardsToForm()
 }
 
@@ -368,9 +371,20 @@ function moveAddresseeCard(index: number, direction: 'up' | 'down') {
   syncCardsToForm()
 }
 
+const counterpartySelectOptions = computed(() => {
+  const list = (store.counterparties?.value || []) as Array<any>
+  return list.map(c => ({ label: `${c.name} (${c.code || ''})`, value: String(c.id) }))
+})
+
+const counterpartyAddOptions = computed(() => {
+  const list = (store.counterparties?.value || []) as Array<any>
+  return list.map(c => ({ label: `+ ${c.name}`, value: String(c.id) }))
+})
+
 function populateAddresseeFromCp(cpId: string, index: number) {
   if (!cpId) return
-  const cp = store.counterparties.value.find(c => String(c.id) === String(cpId))
+  const list = store.counterparties?.value || []
+  const cp = list.find((c: any) => String(c.id) === String(cpId))
   if (!cp) return
   const lines: string[] = []
   if (cp.name) lines.push(cp.name)
@@ -383,14 +397,20 @@ function populateAddresseeFromCp(cpId: string, index: number) {
 
 function appendAddresseeFromCp(cpId: string) {
   if (!cpId) return
-  const cp = store.counterparties.value.find(c => String(c.id) === String(cpId))
+  const list = store.counterparties?.value || []
+  const cp = list.find((c: any) => String(c.id) === String(cpId))
   if (!cp) return
   const lines: string[] = []
   if (cp.name) lines.push(cp.name)
   if (cp.address) lines.push(cp.address)
   if (cp.phone) lines.push(`тел.: ${cp.phone}`)
   if (cp.email) lines.push(`email: ${cp.email}`)
-  addAddresseeCard(lines.join('\n'))
+  if (addresseeCards.value.length === 1 && !addresseeCards.value[0]?.trim()) {
+    addresseeCards.value[0] = lines.join('\n')
+    syncCardsToForm()
+  } else {
+    addAddresseeCard(lines.join('\n'))
+  }
 }
 
 const attachmentsCount = computed(() => {
@@ -841,7 +861,7 @@ async function handleGenerateStatusRequest() {
       </UFormField>
 
       <UFormField
-        v-if="!isOrder"
+        v-if="!isOrder || Boolean(form.addressees)"
       >
         <template #label>
           <div class="flex items-center justify-between w-full">
@@ -902,7 +922,7 @@ async function handleGenerateStatusRequest() {
                 <!-- Швидка підстановка з контрагентів для цієї картки -->
                 <USelect
                   placeholder="Вставити з контрагентів..."
-                  :items="store.counterparties.value.map(c => ({ label: `${c.name} (${c.code})`, value: String(c.id) }))"
+                  :items="counterpartySelectOptions"
                   class="w-48 text-[11px]"
                   size="xs"
                   @update:model-value="(val) => populateAddresseeFromCp(val, idx)"
@@ -967,7 +987,7 @@ async function handleGenerateStatusRequest() {
               <!-- Додати безпосередньо з контрагента -->
               <USelect
                 placeholder="+ Додати з контрагентів..."
-                :items="store.counterparties.value.map(c => ({ label: `+ ${c.name}`, value: String(c.id) }))"
+                :items="counterpartyAddOptions"
                 class="w-52 text-xs"
                 size="xs"
                 @update:model-value="appendAddresseeFromCp"
